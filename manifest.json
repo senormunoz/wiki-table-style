@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WikiStyle",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Personaliza la alineación y el color de fondo de elementos de Wikipedia.",
   "permissions": ["storage", "activeTab"],
   "action": {
@@ -14,12 +14,12 @@
       "js": ["content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
-    }
-  ],
-  "web_accessible_resources": [
+    },
     {
-      "resources": ["visual-editor.js"],
-      "matches": ["https://*.wikipedia.org/*"]
+      "matches": ["https://*.wikipedia.org/*"],
+      "js": ["visual-editor.js"],
+      "run_at": "document_idle",
+      "world": "MAIN"
     }
   ]
 }

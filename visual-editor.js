@@ -2,16 +2,12 @@
   if (window.__wikiStyleVisualEditor) return;
   window.__wikiStyleVisualEditor = true;
 
-  let lastCell = null;
-
-  document.addEventListener('mousedown', (event) => {
-    const cell = event.target.closest('.ve-ce-tableCellNode');
-    if (cell) lastCell = cell;
-  }, true);
+  let panel = null;
+  let statusTimer = null;
+  let commitTimer = null;
 
   document.addEventListener('wikistyle:open-visual-editor', () => {
-    const surface = getSurface();
-    if (!surface) {
+    if (!getSurface()) {
       showMessage('El Editor Visual todavía se está cargando. Espera unos segundos y vuelve a intentarlo.');
       return;
     }
@@ -23,38 +19,54 @@
     return target?.getSurface?.() || null;
   }
 
-  function activeCell() {
-    if (lastCell?.isConnected) return lastCell;
-    return document.querySelector(
-      '.ve-ce-tableCellNode-active, .ve-ce-tableCellNode.ve-ce-tableCellNode-selected'
-    );
+  function getSelectedCells() {
+    const surface = getSurface();
+    if (!surface || !window.ve?.dm) return [];
+    const surfaceModel = surface.getModel();
+    const documentModel = surfaceModel.getDocument();
+    const selection = surfaceModel.getSelection();
+
+    if (selection instanceof window.ve.dm.TableSelection) {
+      return selection.getMatrixCells(documentModel);
+    }
+    if (selection instanceof window.ve.dm.LinearSelection) {
+      const branchNode = documentModel.getBranchNodeFromOffset(selection.getRange().start);
+      const cellNode = branchNode instanceof window.ve.dm.TableCellNode
+        ? branchNode
+        : branchNode?.findParent(window.ve.dm.TableCellNode);
+      const tableNode = cellNode?.findParent(window.ve.dm.TableNode);
+      const cell = tableNode?.getMatrix().lookupCell(cellNode);
+      return cell ? [cell] : [];
+    }
+    return [];
+  }
+
+  function closePanel() {
+    clearInterval(statusTimer);
+    clearTimeout(commitTimer);
+    panel?.remove();
+    panel = null;
   }
 
   function showMessage(message) {
-    document.querySelector('#wikistyle-editor')?.remove();
-    const panel = document.createElement('section');
+    closePanel();
+    panel = document.createElement('section');
     panel.id = 'wikistyle-editor';
     panel.innerHTML = `
       <div class="ws-head"><strong>WikiStyle</strong><button class="ws-close" aria-label="Cerrar">×</button></div>
       <p>${message}</p>`;
     document.documentElement.append(panel);
-    panel.querySelector('.ws-close').addEventListener('click', () => panel.remove());
+    panel.querySelector('.ws-close').addEventListener('click', closePanel);
   }
 
   function showPanel() {
-    document.querySelector('#wikistyle-editor')?.remove();
-    const panel = document.createElement('section');
+    closePanel();
+    panel = document.createElement('section');
     panel.id = 'wikistyle-editor';
     panel.setAttribute('aria-label', 'WikiStyle para el Editor Visual');
     panel.innerHTML = `
-      <div class="ws-head"><strong>Editar tabla</strong><button class="ws-close" aria-label="Cerrar">×</button></div>
-      <p class="ws-note ws-intro">Selecciona primero una celda dentro del Editor Visual.</p>
-      <label>Aplicar a</label>
-      <div class="ws-scope">
-        <button data-scope="cell" aria-pressed="true">Celda</button>
-        <button data-scope="row" aria-pressed="false">Fila</button>
-        <button data-scope="column" aria-pressed="false">Columna</button>
-      </div>
+      <div class="ws-head"><strong>Formato de selección</strong><button class="ws-close" aria-label="Cerrar">×</button></div>
+      <p class="ws-selection">Selecciona una celda, fila o columna en la tabla.</p>
       <label>Alineación</label>
       <div class="ws-align">
         <button data-align="left" aria-pressed="false">Izquierda</button>
@@ -62,136 +74,141 @@
         <button data-align="right" aria-pressed="false">Derecha</button>
       </div>
       <label for="ws-ve-background">Color de fondo</label>
-      <input id="ws-ve-background" type="color" value="#ffffff">
-      <label for="ws-ve-text">Color del texto</label>
-      <input id="ws-ve-text" type="color" value="#202122">
-      <div class="ws-actions">
-        <button class="ws-clear">Quitar estilo</button>
-        <button class="ws-save">Aplicar</button>
+      <div class="ws-color-row">
+        <input id="ws-ve-background" type="color" value="#ffffff">
+        <button data-clear="backgroundColor">Sin fondo</button>
       </div>
-      <p class="ws-note ws-status" role="status">Después podrás revisar y publicar los cambios desde Wikipedia.</p>`;
+      <label for="ws-ve-text">Color del texto</label>
+      <div class="ws-color-row">
+        <input id="ws-ve-text" type="color" value="#202122">
+        <button data-clear="color">Original</button>
+      </div>
+      <p class="ws-note ws-status" role="status">Los cambios se muestran y se aplican inmediatamente a la selección actual.</p>`;
     document.documentElement.append(panel);
+    panel.querySelector('.ws-close').addEventListener('click', closePanel);
 
-    let scope = 'cell';
-    let alignment = '';
-
-    panel.querySelector('.ws-close').addEventListener('click', () => panel.remove());
-    panel.querySelectorAll('[data-scope]').forEach((button) => {
-      button.addEventListener('click', () => {
-        scope = button.dataset.scope;
-        panel.querySelectorAll('[data-scope]').forEach((item) =>
-          item.setAttribute('aria-pressed', String(item === button))
-        );
-      });
-    });
     panel.querySelectorAll('[data-align]').forEach((button) => {
       button.addEventListener('click', () => {
-        alignment = button.dataset.align;
+        const value = button.dataset.align;
+        previewSelection({ textAlign: value });
+        commitSelection({ textAlign: value });
         panel.querySelectorAll('[data-align]').forEach((item) =>
           item.setAttribute('aria-pressed', String(item === button))
         );
       });
     });
-    panel.querySelector('.ws-save').addEventListener('click', () => {
-      applyToVisualEditor(panel, scope, {
-        textAlign: alignment,
-        backgroundColor: panel.querySelector('#ws-ve-background').value,
-        color: panel.querySelector('#ws-ve-text').value
+    bindLiveColor('#ws-ve-background', 'backgroundColor');
+    bindLiveColor('#ws-ve-text', 'color');
+    panel.querySelectorAll('[data-clear]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const property = button.dataset.clear;
+        previewSelection({ [property]: '' });
+        commitSelection({ [property]: '' });
       });
     });
-    panel.querySelector('.ws-clear').addEventListener('click', () => {
-      applyToVisualEditor(panel, scope, {
-        textAlign: '', backgroundColor: '', color: ''
-      });
+
+    statusTimer = setInterval(refreshSelectionStatus, 250);
+    refreshSelectionStatus();
+  }
+
+  function bindLiveColor(selector, property) {
+    const input = panel.querySelector(selector);
+    input.addEventListener('input', () => {
+      const change = { [property]: input.value };
+      previewSelection(change);
+      clearTimeout(commitTimer);
+      commitTimer = setTimeout(() => commitSelection(change), 250);
+    });
+    input.addEventListener('change', () => {
+      clearTimeout(commitTimer);
+      commitSelection({ [property]: input.value });
     });
   }
 
-  function cellsForScope(cell, scope) {
-    if (scope === 'cell') return [cell];
-    if (scope === 'row') {
-      return [...cell.parentElement.children].filter((item) =>
-        item.classList.contains('ve-ce-tableCellNode')
-      );
+  function refreshSelectionStatus() {
+    if (!panel) return;
+    const cells = getSelectedCells();
+    panel.querySelector('.ws-selection').textContent = cells.length
+      ? `${cells.length} ${cells.length === 1 ? 'celda seleccionada' : 'celdas seleccionadas'}`
+      : 'Selecciona una celda, fila o columna en la tabla.';
+  }
+
+  function viewElementForNode(node) {
+    for (const element of document.querySelectorAll('.ve-ce-tableCellNode')) {
+      if (window.jQuery?.(element).data('view')?.getModel?.() === node) return element;
     }
-
-    const table = cell.closest('.ve-ce-tableNode');
-    const tableElement = table?.matches('table') ? table : table?.querySelector(':scope > table');
-    if (!tableElement) return [cell];
-    const rows = [...tableElement.rows];
-    const grid = [];
-    let selectedColumns = [];
-    rows.forEach((row, rowIndex) => {
-      grid[rowIndex] ||= [];
-      let columnIndex = 0;
-      [...row.children].filter((item) => item.matches('td, th')).forEach((item) => {
-        while (grid[rowIndex][columnIndex]) columnIndex += 1;
-        const rowSpan = Math.max(1, Number(item.getAttribute('rowspan')) || 1);
-        const columnSpan = Math.max(1, Number(item.getAttribute('colspan')) || 1);
-        if (item === cell) {
-          selectedColumns = Array.from({ length: columnSpan }, (_, index) => columnIndex + index);
-        }
-        for (let rowOffset = 0; rowOffset < rowSpan; rowOffset += 1) {
-          grid[rowIndex + rowOffset] ||= [];
-          for (let columnOffset = 0; columnOffset < columnSpan; columnOffset += 1) {
-            grid[rowIndex + rowOffset][columnIndex + columnOffset] = item;
-          }
-        }
-        columnIndex += columnSpan;
-      });
-    });
-    return [...new Set(grid.flatMap((row) => selectedColumns.map((column) => row[column]).filter(Boolean)))];
+    return null;
   }
 
-  function viewForCell(cell) {
-    return window.jQuery?.(cell).data('view') || cell.__veView || null;
-  }
-
-  function updateStyle(styleText, values) {
-    const holder = document.createElement('span');
-    holder.setAttribute('style', styleText || '');
-    for (const [property, value] of Object.entries({
-      'text-align': values.textAlign,
-      'background-color': values.backgroundColor,
-      color: values.color
-    })) {
-      if (value) holder.style.setProperty(property, value);
-      else holder.style.removeProperty(property);
+  function previewSelection(changes) {
+    for (const cell of getSelectedCells()) {
+      const element = viewElementForNode(cell.node);
+      if (!element) continue;
+      for (const [property, value] of Object.entries(changes)) {
+        if (value) element.style[property] = value;
+        else element.style.removeProperty(property.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`));
+      }
     }
-    return holder.getAttribute('style') || '';
+    refreshSelectionStatus();
   }
 
-  function applyToVisualEditor(panel, scope, values) {
-    const status = panel.querySelector('.ws-status');
-    const cell = activeCell();
+  function commitSelection(changes) {
     const surface = getSurface();
-    if (!cell || !surface) {
-      status.textContent = 'Selecciona una celda de la tabla y vuelve a pulsar Aplicar.';
+    const cells = getSelectedCells();
+    const status = panel?.querySelector('.ws-status');
+    if (!surface || !cells.length) {
+      if (status) status.textContent = 'Selecciona primero una celda, fila o columna de la tabla.';
       return;
     }
 
     const surfaceModel = surface.getModel();
     const documentModel = surfaceModel.getDocument();
-    const cells = cellsForScope(cell, scope);
-    let applied = 0;
+    const store = documentModel.getStore();
+    const transactions = [];
 
-    for (const cellElement of cells) {
-      const view = viewForCell(cellElement);
-      const node = view?.getModel?.();
-      const offset = node?.getOuterRange?.().start;
-      if (!node || !Number.isInteger(offset)) continue;
+    for (const cell of cells) {
+      const offset = cell.node.getOuterRange().start;
+      const opening = documentModel.getData(new window.ve.Range(offset, offset + 1), true)[0];
+      opening.attributes ||= {};
+      if (Object.hasOwn(changes, 'textAlign')) {
+        if (changes.textAlign) opening.attributes.textAlign = changes.textAlign;
+        else delete opening.attributes.textAlign;
+      }
 
-      const style = updateStyle(node.getAttribute?.('style'), values);
-      const transaction = window.ve.dm.TransactionBuilder.static.newFromAttributeChanges(
+      const originals = store.value(opening.originalDomElementsHash);
+      if (originals?.length) {
+        const domElements = originals.map((element) => element.cloneNode(true));
+        const domCell = domElements[0];
+        if (Object.hasOwn(changes, 'textAlign')) setStyle(domCell, 'text-align', changes.textAlign);
+        if (Object.hasOwn(changes, 'backgroundColor')) setStyle(domCell, 'background-color', changes.backgroundColor);
+        if (Object.hasOwn(changes, 'color')) setStyle(domCell, 'color', changes.color);
+        opening.originalDomElementsHash = store.hash(
+          domElements,
+          domElements.map(window.ve.getNodeHtml).join('')
+        );
+      }
+
+      transactions.push(window.ve.dm.TransactionBuilder.static.newFromReplacement(
         documentModel,
-        offset,
-        { style }
-      );
-      surfaceModel.change(transaction);
-      applied += 1;
+        new window.ve.Range(offset, offset + 1),
+        [opening]
+      ));
     }
 
-    status.textContent = applied
-      ? `Estilo aplicado a ${applied} ${applied === 1 ? 'celda' : 'celdas'}. Revisa y publica los cambios en Wikipedia.`
-      : 'No se pudo vincular esta tabla con el modelo de edición. Puede proceder de una plantilla.';
+    try {
+      surfaceModel.change(transactions);
+      surfaceModel.breakpoint();
+      if (status) {
+        status.textContent = `Formato aplicado a ${cells.length} ${cells.length === 1 ? 'celda' : 'celdas'}. Puedes deshacerlo con Ctrl+Z.`;
+      }
+    } catch (error) {
+      if (status) status.textContent = `No se pudo aplicar el formato: ${error.message}`;
+    }
+  }
+
+  function setStyle(element, property, value) {
+    if (value) element.style.setProperty(property, value);
+    else element.style.removeProperty(property);
+    if (!element.getAttribute('style')) element.removeAttribute('style');
   }
 })();

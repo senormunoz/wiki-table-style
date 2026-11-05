@@ -1,10 +1,4 @@
 (() => {
-  const bridge = document.createElement('script');
-  bridge.src = chrome.runtime.getURL('visual-editor.js');
-  bridge.dataset.wikistyleBridge = 'true';
-  bridge.addEventListener('load', () => bridge.remove());
-  (document.head || document.documentElement).append(bridge);
-
   const STORE_PREFIX = 'wikistyle:';
   const pageKey = `${STORE_PREFIX}${location.origin}${location.pathname}`;
   let selecting = false;

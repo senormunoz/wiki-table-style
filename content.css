@@ -89,6 +89,29 @@
   background: white;
 }
 
+#wikistyle-editor .ws-color-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+#wikistyle-editor .ws-color-row button {
+  padding: 6px 10px;
+  border: 1px solid #a2a9b1;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #fff;
+}
+
+#wikistyle-editor .ws-selection {
+  margin: 0 0 12px;
+  padding: 8px;
+  border-radius: 6px;
+  color: #5738d6;
+  background: #f1edff;
+  font-weight: 650;
+}
+
 #wikistyle-editor .ws-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
