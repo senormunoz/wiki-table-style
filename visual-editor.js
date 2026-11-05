@@ -11,8 +11,67 @@
       showMessage('El Editor Visual todavía se está cargando. Espera unos segundos y vuelve a intentarlo.');
       return;
     }
+    ensureVisualEditorPatches();
     showPanel();
   });
+
+  function ensureVisualEditorPatches() {
+    const dmClass = window.ve?.dm?.TableCellNode;
+    const ceClass = window.ve?.ce?.TableCellNode;
+    if (!dmClass || !ceClass || dmClass.static.__wikiStylePatched) return;
+
+    const originalToDataElement = dmClass.static.toDataElement;
+    dmClass.static.toDataElement = function (domElements, ...args) {
+      const dataElement = originalToDataElement.call(this, domElements, ...args);
+      const style = domElements[0]?.style;
+      if (style?.backgroundColor) {
+        dataElement.attributes.wikistyleBackgroundColor = style.backgroundColor;
+      }
+      if (style?.color) {
+        dataElement.attributes.wikistyleColor = style.color;
+      }
+      return dataElement;
+    };
+
+    const originalToDomElements = dmClass.static.toDomElements;
+    dmClass.static.toDomElements = function (dataElement, doc, converter, ...args) {
+      const domElements = originalToDomElements.call(this, dataElement, doc, converter, ...args);
+      const domCell = domElements[0];
+      const store = converter?.getStore?.();
+      const original = store?.value(dataElement.originalDomElementsHash)?.[0];
+      if (original?.style?.cssText) domCell.style.cssText = original.style.cssText;
+      dmClass.static.applyAlignmentAttributes(dataElement.attributes || {}, domCell);
+      applyModelStyle(domCell, dataElement.attributes || {});
+      return domElements;
+    };
+
+    const originalUpdateStyles = ceClass.static.updateStyles;
+    ceClass.static.updateStyles = function ($element, model) {
+      originalUpdateStyles.call(this, $element, model);
+      const backgroundColor = model.getAttribute('wikistyleBackgroundColor');
+      const color = model.getAttribute('wikistyleColor');
+      if (backgroundColor !== undefined) setStyle($element[0], 'background-color', backgroundColor);
+      if (color !== undefined) setStyle($element[0], 'color', color);
+    };
+
+    const originalAttributeChange = ceClass.prototype.onAttributeChange;
+    ceClass.prototype.onAttributeChange = function (key, from, to) {
+      originalAttributeChange.call(this, key, from, to);
+      if (key === 'wikistyleBackgroundColor') setStyle(this.$element[0], 'background-color', to);
+      if (key === 'wikistyleColor') setStyle(this.$element[0], 'color', to);
+    };
+
+    dmClass.static.__wikiStylePatched = true;
+  }
+
+  function applyModelStyle(element, attributes) {
+    if (Object.hasOwn(attributes, 'wikistyleBackgroundColor')) {
+      setStyle(element, 'background-color', attributes.wikistyleBackgroundColor);
+    }
+    if (Object.hasOwn(attributes, 'wikistyleColor')) {
+      setStyle(element, 'color', attributes.wikistyleColor);
+    }
+  }
 
   function getSurface() {
     const target = window.mw?.libs?.ve?.target || window.ve?.init?.target;
@@ -163,35 +222,24 @@
 
     const surfaceModel = surface.getModel();
     const documentModel = surfaceModel.getDocument();
-    const store = documentModel.getStore();
     const transactions = [];
 
     for (const cell of cells) {
       const offset = cell.node.getOuterRange().start;
-      const opening = documentModel.getData(new window.ve.Range(offset, offset + 1), true)[0];
-      opening.attributes ||= {};
+      const attributes = {};
       if (Object.hasOwn(changes, 'textAlign')) {
-        if (changes.textAlign) opening.attributes.textAlign = changes.textAlign;
-        else delete opening.attributes.textAlign;
+        attributes.textAlign = changes.textAlign || undefined;
       }
-
-      const originals = store.value(opening.originalDomElementsHash);
-      if (originals?.length) {
-        const domElements = originals.map((element) => element.cloneNode(true));
-        const domCell = domElements[0];
-        if (Object.hasOwn(changes, 'textAlign')) setStyle(domCell, 'text-align', changes.textAlign);
-        if (Object.hasOwn(changes, 'backgroundColor')) setStyle(domCell, 'background-color', changes.backgroundColor);
-        if (Object.hasOwn(changes, 'color')) setStyle(domCell, 'color', changes.color);
-        opening.originalDomElementsHash = store.hash(
-          domElements,
-          domElements.map(window.ve.getNodeHtml).join('')
-        );
+      if (Object.hasOwn(changes, 'backgroundColor')) {
+        attributes.wikistyleBackgroundColor = changes.backgroundColor;
       }
-
-      transactions.push(window.ve.dm.TransactionBuilder.static.newFromReplacement(
+      if (Object.hasOwn(changes, 'color')) {
+        attributes.wikistyleColor = changes.color;
+      }
+      transactions.push(window.ve.dm.TransactionBuilder.static.newFromAttributeChanges(
         documentModel,
-        new window.ve.Range(offset, offset + 1),
-        [opening]
+        offset,
+        attributes
       ));
     }
 

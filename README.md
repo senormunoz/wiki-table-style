@@ -13,6 +13,10 @@ cambios se previsualizan y aplican inmediatamente al modelo de edición, por lo 
 pasan al wikicódigo al revisar y publicar. La extensión nunca pulsa **Publicar
 cambios** automáticamente.
 
+WikiStyle guarda el formato como atributos del nodo de celda de VisualEditor. No
+reemplaza celdas ni inserta estructuras de tabla nuevas, por lo que el contenido y
+la estructura original permanecen intactos.
+
 ## Probar la extensión
 
 1. Abre `chrome://extensions` en Chrome.
