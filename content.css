@@ -1,0 +1,100 @@
+.wikistyle-hover {
+  outline: 3px solid #6d4aff !important;
+  outline-offset: 2px !important;
+  cursor: crosshair !important;
+}
+
+#wikistyle-editor {
+  position: fixed;
+  z-index: 2147483647;
+  top: 16px;
+  right: 16px;
+  width: 286px;
+  padding: 16px;
+  border: 1px solid #dadde1;
+  border-radius: 12px;
+  box-sizing: border-box;
+  color: #202122;
+  background: #fff;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 22%);
+  font: 14px/1.4 system-ui, sans-serif;
+}
+
+#wikistyle-editor * { box-sizing: border-box; }
+
+#wikistyle-editor .ws-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+#wikistyle-editor strong { font-size: 16px; }
+
+#wikistyle-editor .ws-close {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  font-size: 22px;
+  cursor: pointer;
+  background: transparent;
+}
+
+#wikistyle-editor .ws-close:hover { background: #f1f2f3; }
+
+#wikistyle-editor label {
+  display: block;
+  margin: 12px 0 6px;
+  font-weight: 650;
+}
+
+#wikistyle-editor .ws-align {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+#wikistyle-editor .ws-align button,
+#wikistyle-editor .ws-actions button {
+  padding: 8px;
+  border: 1px solid #a2a9b1;
+  border-radius: 6px;
+  color: #202122;
+  cursor: pointer;
+  background: #fff;
+  font: inherit;
+}
+
+#wikistyle-editor .ws-align button:hover,
+#wikistyle-editor .ws-align button[aria-pressed="true"] { background: #ece7ff; border-color: #6d4aff; }
+
+#wikistyle-editor input[type="color"] {
+  width: 100%;
+  height: 38px;
+  padding: 3px;
+  border: 1px solid #a2a9b1;
+  border-radius: 6px;
+  cursor: pointer;
+  background: white;
+}
+
+#wikistyle-editor .ws-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+#wikistyle-editor .ws-actions .ws-save {
+  border-color: #6d4aff;
+  color: #fff;
+  background: #6d4aff;
+}
+
+#wikistyle-editor .ws-note {
+  margin: 10px 0 0;
+  color: #72777d;
+  font-size: 12px;
+}
