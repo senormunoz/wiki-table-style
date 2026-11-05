@@ -1,8 +1,10 @@
 # WikiStyle
 
 Extensión de Chrome para personalizar visualmente páginas de Wikipedia. Permite
-seleccionar cualquier elemento, cambiar su alineación y color de fondo, y guardar
-los ajustes de forma local para cada artículo.
+seleccionar cualquier elemento, cambiar su alineación, color de fondo y color de
+texto, y guardar los ajustes de forma local para cada artículo. En las tablas se
+puede aplicar cada cambio a una celda, una fila o una columna completa, incluyendo
+tablas con celdas combinadas mediante `rowspan` y `colspan`.
 
 ## Probar la extensión
 
