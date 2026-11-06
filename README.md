@@ -35,6 +35,9 @@ fondo existente, WikiStyle elimina `background-color` de `style` para evitar que
 ambas declaraciones entren en conflicto. La alineación y el color del texto
 continúan guardándose en `style`.
 
+La alineación vertical ofrece **Arriba**, **Centro** y **Abajo**, y se guarda en
+el wikicódigo mediante `valign="top"`, `valign="middle"` o `valign="bottom"`.
+
 ## Probar la extensión
 
 1. Abre `chrome://extensions` en Chrome.

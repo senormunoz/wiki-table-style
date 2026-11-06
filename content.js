@@ -47,6 +47,7 @@
 
   function applyStyle(element, style) {
     element.style.setProperty('text-align', style.textAlign || '');
+    element.style.setProperty('vertical-align', style.verticalAlign || '');
     element.style.setProperty('background-color', style.backgroundColor || '');
     element.style.setProperty('color', style.color || '');
     if (style.color) {
@@ -131,6 +132,7 @@
     }
     drafts = new Map(targets.map((element) => [element, {
       textAlign: element.style.textAlign,
+      verticalAlign: element.style.verticalAlign,
       backgroundColor: element.style.backgroundColor,
       color: element.style.color
     }]));
@@ -193,6 +195,12 @@
         <button data-align="center">Centro</button>
         <button data-align="right">Derecha</button>
       </div>
+      <label>Alineación vertical</label>
+      <div class="ws-align ws-vertical-align">
+        <button data-valign="top">Arriba</button>
+        <button data-valign="middle">Centro</button>
+        <button data-valign="bottom">Abajo</button>
+      </div>
       <label for="ws-color">Color de fondo</label>
       <div class="ws-color-row">
         <input id="ws-color" type="color" value="${rgbToHex(computed.backgroundColor)}">
@@ -228,12 +236,21 @@
         );
       });
     });
+    panel.querySelectorAll('[data-valign]').forEach((button) => {
+      button.addEventListener('click', () => {
+        targets.forEach((element) => { element.style.verticalAlign = button.dataset.valign; });
+        panel.querySelectorAll('[data-valign]').forEach((item) =>
+          item.setAttribute('aria-pressed', String(item === button))
+        );
+      });
+    });
     bindColorControls('#ws-color', '#ws-color-hex', (color) => {
       targets.forEach((element) => { element.style.backgroundColor = color; });
     });
     bindColorControls('#ws-text-color', '#ws-text-color-hex', (color) => {
       targets.forEach((element) => applyStyle(element, {
         textAlign: element.style.textAlign,
+        verticalAlign: element.style.verticalAlign,
         backgroundColor: element.style.backgroundColor,
         color
       }));
@@ -246,6 +263,9 @@
       const current = getComputedStyle(targets[0]);
       panel.querySelectorAll('[data-align]').forEach((button) =>
         button.setAttribute('aria-pressed', String(current.textAlign === button.dataset.align))
+      );
+      panel.querySelectorAll('[data-valign]').forEach((button) =>
+        button.setAttribute('aria-pressed', String(current.verticalAlign === button.dataset.valign))
       );
       setColorControls('#ws-color', '#ws-color-hex', rgbToHex(current.backgroundColor));
       setColorControls('#ws-text-color', '#ws-text-color-hex', rgbToHex(current.color));
@@ -302,6 +322,7 @@
     targets.forEach((element) => {
       changes[selectorFor(element)] = {
         textAlign: element.style.textAlign,
+        verticalAlign: element.style.verticalAlign,
         backgroundColor: element.style.backgroundColor,
         color: element.style.color
       };
@@ -313,7 +334,7 @@
   async function clearSelected() {
     const changes = await getChanges();
     targets.forEach((element) => {
-      applyStyle(element, { textAlign: '', backgroundColor: '', color: '' });
+      applyStyle(element, { textAlign: '', verticalAlign: '', backgroundColor: '', color: '' });
       delete changes[selectorFor(element)];
     });
     await setChanges(changes);
@@ -325,7 +346,7 @@
     for (const selector of Object.keys(changes)) {
       try {
         const element = document.querySelector(selector);
-        if (element) applyStyle(element, { textAlign: '', backgroundColor: '', color: '' });
+        if (element) applyStyle(element, { textAlign: '', verticalAlign: '', backgroundColor: '', color: '' });
       } catch { /* Ignore selectors invalidated by page changes. */ }
     }
     await chrome.storage.local.remove(pageKey);

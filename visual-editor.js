@@ -167,6 +167,12 @@
         <button data-align="center" aria-pressed="false">Centro</button>
         <button data-align="right" aria-pressed="false">Derecha</button>
       </div>
+      <label>Alineación vertical</label>
+      <div class="ws-align ws-vertical-align">
+        <button data-valign="top" aria-pressed="false">Arriba</button>
+        <button data-valign="middle" aria-pressed="false">Centro</button>
+        <button data-valign="bottom" aria-pressed="false">Abajo</button>
+      </div>
       <label for="ws-ve-background">Color de fondo</label>
       <div class="ws-color-row">
         <input id="ws-ve-background" type="color" value="#ffffff">
@@ -190,6 +196,16 @@
         previewSelection({ textAlign: value });
         commitSelection({ textAlign: value });
         panel.querySelectorAll('[data-align]').forEach((item) =>
+          item.setAttribute('aria-pressed', String(item === button))
+        );
+      });
+    });
+    panel.querySelectorAll('[data-valign]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const value = button.dataset.valign;
+        previewSelection({ verticalAlign: value });
+        commitSelection({ verticalAlign: value });
+        panel.querySelectorAll('[data-valign]').forEach((item) =>
           item.setAttribute('aria-pressed', String(item === button))
         );
       });
@@ -455,6 +471,9 @@
       const attributes = {};
       if (Object.hasOwn(changes, 'textAlign')) {
         attributes.textAlign = changes.textAlign || undefined;
+      }
+      if (Object.hasOwn(changes, 'verticalAlign')) {
+        attributes.valign = changes.verticalAlign || undefined;
       }
       if (Object.hasOwn(changes, 'backgroundColor')) {
         attributes.wikistyleBackgroundColor = changes.backgroundColor;
