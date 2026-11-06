@@ -144,6 +144,7 @@
         <input id="ws-ve-text-hex" class="ws-hex" type="text" value="#202122" maxlength="7" spellcheck="false" aria-label="Color de texto hexadecimal">
         <button data-clear="color">Original</button>
       </div>
+      <button class="ws-stripes-open" disabled>Configurar filas alternas…</button>
       <p class="ws-note ws-status" role="status">Los cambios se muestran y se aplican inmediatamente a la selección actual.</p>`;
     document.documentElement.append(panel);
     panel.querySelector('.ws-close').addEventListener('click', closePanel);
@@ -167,6 +168,7 @@
         commitSelection({ [property]: '' });
       });
     });
+    panel.querySelector('.ws-stripes-open').addEventListener('click', showStripeDialog);
 
     statusTimer = setInterval(refreshSelectionStatus, 250);
     refreshSelectionStatus();
@@ -237,12 +239,149 @@
     return /^[0-9a-f]{6}$/i.test(hex) ? `#${hex.toLowerCase()}` : null;
   }
 
+  function getWholeTableRows() {
+    const surface = getSurface();
+    if (!surface || !window.ve?.dm) return null;
+    const surfaceModel = surface.getModel();
+    const documentModel = surfaceModel.getDocument();
+    const selection = surfaceModel.getSelection();
+    if (!(selection instanceof window.ve.dm.TableSelection)) return null;
+
+    const matrix = selection.getTableNode(documentModel).getMatrix();
+    const rows = [];
+    const allNodes = new Set();
+    for (let rowIndex = 0; rowIndex < matrix.getRowCount(); rowIndex += 1) {
+      const cells = [];
+      const rowNodes = new Set();
+      for (let columnIndex = 0; columnIndex < matrix.getColCount(rowIndex); columnIndex += 1) {
+        const cell = matrix.getCell(rowIndex, columnIndex);
+        if (!cell || cell.isPlaceholder?.() || rowNodes.has(cell.node)) continue;
+        rowNodes.add(cell.node);
+        allNodes.add(cell.node);
+        cells.push(cell);
+      }
+      rows.push(cells);
+    }
+
+    const selectedNodes = new Set(selection.getMatrixCells(documentModel).map((cell) => cell.node));
+    if (selectedNodes.size !== allNodes.size || ![...allNodes].every((node) => selectedNodes.has(node))) {
+      return null;
+    }
+    return { rows };
+  }
+
+  function showStripeDialog() {
+    const table = getWholeTableRows();
+    const status = panel?.querySelector('.ws-status');
+    if (!table) {
+      if (status) status.textContent = 'Selecciona la tabla completa para configurar filas alternas.';
+      return;
+    }
+
+    panel.querySelector('.ws-stripes-dialog')?.remove();
+    const dialog = document.createElement('section');
+    dialog.className = 'ws-stripes-dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-label', 'Colores de filas alternas');
+    dialog.innerHTML = `
+      <div class="ws-head"><strong>Filas alternas</strong><button class="ws-close" aria-label="Cerrar">×</button></div>
+      <p class="ws-note">Las filas de encabezado conservarán su color actual.</p>
+      <label for="ws-stripe-first">Primer color</label>
+      <div class="ws-color-row">
+        <input id="ws-stripe-first" type="color" value="#ffffff">
+        <input id="ws-stripe-first-hex" class="ws-hex" type="text" value="#FFFFFF" maxlength="7" spellcheck="false" aria-label="Primer color hexadecimal">
+      </div>
+      <label for="ws-stripe-second">Segundo color</label>
+      <div class="ws-color-row">
+        <input id="ws-stripe-second" type="color" value="#efefef">
+        <input id="ws-stripe-second-hex" class="ws-hex" type="text" value="#EFEFEF" maxlength="7" spellcheck="false" aria-label="Segundo color hexadecimal">
+      </div>
+      <div class="ws-actions">
+        <button class="ws-stripes-cancel">Cancelar</button>
+        <button class="ws-save ws-stripes-apply">Aplicar colores alternos</button>
+      </div>`;
+    panel.append(dialog);
+
+    bindDialogColor(dialog, '#ws-stripe-first', '#ws-stripe-first-hex');
+    bindDialogColor(dialog, '#ws-stripe-second', '#ws-stripe-second-hex');
+    const close = () => dialog.remove();
+    dialog.querySelector('.ws-close').addEventListener('click', close);
+    dialog.querySelector('.ws-stripes-cancel').addEventListener('click', close);
+    dialog.querySelector('.ws-stripes-apply').addEventListener('click', () => {
+      applyAlternatingRows(table.rows, [
+        dialog.querySelector('#ws-stripe-first').value,
+        dialog.querySelector('#ws-stripe-second').value
+      ]);
+      close();
+    });
+  }
+
+  function bindDialogColor(dialog, pickerSelector, hexSelector) {
+    const picker = dialog.querySelector(pickerSelector);
+    const hex = dialog.querySelector(hexSelector);
+    picker.addEventListener('input', () => {
+      hex.value = picker.value.toUpperCase();
+      hex.setAttribute('aria-invalid', 'false');
+    });
+    hex.addEventListener('input', () => {
+      const color = normalizeHex(hex.value);
+      hex.setAttribute('aria-invalid', String(!color));
+      if (color) picker.value = color;
+    });
+    hex.addEventListener('blur', () => {
+      const color = normalizeHex(hex.value);
+      hex.value = (color || picker.value).toUpperCase();
+      hex.setAttribute('aria-invalid', 'false');
+    });
+  }
+
+  function applyAlternatingRows(rows, colors) {
+    const surface = getSurface();
+    const status = panel?.querySelector('.ws-status');
+    if (!surface) return;
+    const surfaceModel = surface.getModel();
+    const documentModel = surfaceModel.getDocument();
+    const headerNodes = new Set(
+      rows
+        .filter((cells) => cells.length && cells.every((cell) => cell.node.getAttribute('style') === 'header'))
+        .flatMap((cells) => cells.map((cell) => cell.node))
+    );
+    const dataRows = rows.filter(
+      (cells) => cells.length && !cells.every((cell) => cell.node.getAttribute('style') === 'header')
+    );
+    const formattedNodes = new Set();
+    const transactions = [];
+
+    dataRows.forEach((cells, rowIndex) => {
+      const color = colors[rowIndex % 2];
+      cells.forEach((cell) => {
+        if (headerNodes.has(cell.node) || formattedNodes.has(cell.node)) return;
+        formattedNodes.add(cell.node);
+        previewSelection({ backgroundColor: color }, [cell]);
+        transactions.push(window.ve.dm.TransactionBuilder.static.newFromAttributeChanges(
+          documentModel,
+          cell.node.getOuterRange().start,
+          { wikistyleBackgroundColor: color }
+        ));
+      });
+    });
+
+    try {
+      surfaceModel.change(transactions);
+      surfaceModel.breakpoint();
+      if (status) status.textContent = `Colores alternos aplicados a ${dataRows.length} filas. Puedes deshacerlo con Ctrl+Z.`;
+    } catch (error) {
+      if (status) status.textContent = `No se pudieron aplicar los colores alternos: ${error.message}`;
+    }
+  }
+
   function refreshSelectionStatus() {
     if (!panel) return;
     const cells = getSelectedCells();
     panel.querySelector('.ws-selection').textContent = cells.length
       ? `${cells.length} ${cells.length === 1 ? 'celda seleccionada' : 'celdas seleccionadas'}`
       : 'Selecciona una celda, fila o columna en la tabla.';
+    panel.querySelector('.ws-stripes-open').disabled = !getWholeTableRows();
   }
 
   function viewElementForNode(node) {

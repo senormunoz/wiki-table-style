@@ -25,6 +25,11 @@ Cada cambio de color queda asociado a las celdas seleccionadas al realizarlo. Si
 la selección cambia mientras se completa la aplicación, las nuevas celdas no
 reciben el formato anterior.
 
+Al seleccionar una tabla completa en el Editor Visual se habilita **Configurar
+filas alternas**. Permite elegir dos colores —`#FFFFFF` y `#EFEFEF` por defecto— y
+aplicarlos alternadamente a las filas de datos. Las filas compuestas por celdas de
+encabezado conservan su formato actual.
+
 ## Probar la extensión
 
 1. Abre `chrome://extensions` en Chrome.
