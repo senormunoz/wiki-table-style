@@ -57,10 +57,13 @@
       const domCell = domElements[0];
       const store = converter?.getStore?.();
       const original = store?.value(dataElement.originalDomElementsHash)?.[0];
-      if (original?.style?.cssText) domCell.style.cssText = original.style.cssText;
+      if (dataElement.attributes?.wikistyleNukeStyles) {
+        nukeSerializedElement(domCell);
+      } else if (original?.style?.cssText) {
+        domCell.style.cssText = original.style.cssText;
+      }
       dmClass.static.applyAlignmentAttributes(dataElement.attributes || {}, domCell);
       applyModelStyle(domCell, dataElement.attributes || {});
-      if (dataElement.attributes?.wikistyleNukeStyles) nukeSerializedElement(domCell);
       return domElements;
     };
 
@@ -87,8 +90,10 @@
       originalUpdateStyles.call(this, $element, model);
       const backgroundColor = model.getAttribute('wikistyleBackgroundColor');
       const color = model.getAttribute('wikistyleColor');
+      const horizontalAlign = model.getAttribute('wikistyleAlign');
       if (backgroundColor !== undefined) setCellBackground($element[0], backgroundColor);
-      if (color !== undefined) setStyle($element[0], 'color', color);
+      if (color !== undefined) setManagedStyle($element[0], 'color', color);
+      if (horizontalAlign !== undefined) setCellHorizontalAlignment($element[0], horizontalAlign);
       for (const [attribute, property] of Object.entries(managedStyles)) {
         const value = model.getAttribute(attribute);
         if (value !== undefined) setManagedStyle($element[0], property, value);
@@ -106,7 +111,10 @@
         else setCellBackground(this.$element[0], to);
       }
       if (key === 'wikistyleColor') {
-        setStyle(this.$element[0], 'color', original?.style?.color || to);
+        setManagedStyle(this.$element[0], 'color', original?.style?.color || to);
+      }
+      if (key === 'wikistyleAlign') {
+        setCellHorizontalAlignment(this.$element[0], to);
       }
       if (managedStyles[key]) {
         setManagedStyle(this.$element[0], managedStyles[key], original?.style?.getPropertyValue(managedStyles[key]) || to);
@@ -124,6 +132,7 @@
         if (
           !target?.__wikiStyleBackgroundHandled &&
           !target?.__wikiStyleWidthHandled &&
+          !target?.__wikiStyleAlignHandled &&
           !target?.__wikiStyleNukeStyles &&
           !properties.length
         ) {
@@ -136,13 +145,16 @@
           clone.style?.removeProperty('background-color');
         }
         if (target.__wikiStyleWidthHandled) clone.removeAttribute?.('width');
+        if (target.__wikiStyleAlignHandled) {
+          clone.removeAttribute?.('align');
+          clone.style?.removeProperty('text-align');
+        }
         properties.forEach((property) => clone.style?.removeProperty(property));
         if (clone.style && !clone.getAttribute('style')) clone.removeAttribute('style');
         return clone;
       });
       const result = originalRenderAttributes.call(this, preparedOriginals, targetElements, ...args);
       Array.from(targetElements).forEach((target) => {
-        if (target.__wikiStyleNukeStyles) nukeSerializedElement(target);
         if (target.getAttribute?.('style')?.trim() === '') target.removeAttribute('style');
       });
       return result;
@@ -156,7 +168,10 @@
       setCellBackground(element, attributes.wikistyleBackgroundColor);
     }
     if (Object.hasOwn(attributes, 'wikistyleColor')) {
-      setStyle(element, 'color', attributes.wikistyleColor);
+      setManagedStyle(element, 'color', attributes.wikistyleColor);
+    }
+    if (Object.hasOwn(attributes, 'wikistyleAlign')) {
+      setCellHorizontalAlignment(element, attributes.wikistyleAlign);
     }
     for (const [attribute, property] of Object.entries(managedStyles)) {
       if (Object.hasOwn(attributes, attribute)) setManagedStyle(element, property, attributes[attribute]);
@@ -186,6 +201,14 @@
     element.__wikiStyleWidthHandled = true;
     if (value) element.setAttribute('width', value);
     else element.removeAttribute('width');
+  }
+
+  function setCellHorizontalAlignment(element, value) {
+    element.__wikiStyleAlignHandled = true;
+    element.style.removeProperty('text-align');
+    if (value) element.setAttribute('align', value);
+    else element.removeAttribute('align');
+    if (!element.getAttribute('style')) element.removeAttribute('style');
   }
 
   function setCellBackground(element, value) {
@@ -819,6 +842,7 @@
           ...Object.fromEntries(Object.keys(managedStyles).map((name) => [name, undefined])),
           wikistyleBackgroundColor: undefined,
           wikistyleColor: undefined,
+          wikistyleAlign: undefined,
           wikistyleWidth: undefined,
           wikistyleNukeStyles: true,
           align: undefined,
@@ -935,7 +959,9 @@
       const offset = cell.node.getOuterRange().start;
       const attributes = {};
       if (Object.hasOwn(changes, 'textAlign')) {
-        attributes.textAlign = changes.textAlign || undefined;
+        attributes.wikistyleAlign = changes.textAlign || undefined;
+        attributes.textAlign = undefined;
+        attributes.originalTextAlign = undefined;
       }
       if (Object.hasOwn(changes, 'verticalAlign')) {
         attributes.valign = changes.verticalAlign || undefined;

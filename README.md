@@ -32,8 +32,10 @@ encabezado conservan su formato actual.
 
 Los fondos se guardan en el wikicódigo con `bgcolor="#RRGGBB"`. Al cambiar un
 fondo existente, WikiStyle elimina `background-color` de `style` para evitar que
-ambas declaraciones entren en conflicto. La alineación y el color del texto
-continúan guardándose en `style`.
+ambas declaraciones entren en conflicto. La alineación horizontal se guarda con
+`align="left"`, `align="center"` o `align="right"`. El color del texto se guarda
+en `style`, ya que las celdas de wikicódigo no disponen de un atributo HTML
+equivalente para el color.
 
 La alineación vertical ofrece **Arriba**, **Centro** y **Abajo**, y se guarda en
 el wikicódigo mediante `valign="top"`, `valign="middle"` o `valign="bottom"`.
@@ -63,6 +65,8 @@ encabezado y celdas. Conserva contenido y estructura, incluidos `rowspan` y
 
 La limpieza se repite después de la restauración interna de atributos de
 VisualEditor y elimina también cualquier atributo vacío `style=""`.
+Si se aplica un formato nuevo después del reseteo, se escribe sobre esa base
+limpia y permanece al guardar sin recuperar atributos antiguos.
 
 ## Probar la extensión
 
