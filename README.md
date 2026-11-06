@@ -21,6 +21,10 @@ Los colores pueden elegirse con el selector visual o escribirse como código
 hexadecimal. Ambos controles permanecen sincronizados y aceptan `#RRGGBB`,
 `RRGGBB` y la forma corta `#RGB`.
 
+Cada cambio de color queda asociado a las celdas seleccionadas al realizarlo. Si
+la selección cambia mientras se completa la aplicación, las nuevas celdas no
+reciben el formato anterior.
+
 ## Probar la extensión
 
 1. Abre `chrome://extensions` en Chrome.

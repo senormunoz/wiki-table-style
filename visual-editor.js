@@ -175,14 +175,22 @@
   function bindLiveColor(pickerSelector, hexSelector, property) {
     const picker = panel.querySelector(pickerSelector);
     const hex = panel.querySelector(hexSelector);
+    let interactionCells = [];
 
-    function previewAndSchedule(color) {
-      const change = { [property]: color };
-      previewSelection(change);
-      clearTimeout(commitTimer);
-      commitTimer = setTimeout(() => commitSelection(change), 250);
+    function captureSelection() {
+      interactionCells = getSelectedCells();
     }
 
+    function previewAndSchedule(color) {
+      const cells = interactionCells.length ? interactionCells : getSelectedCells();
+      const change = { [property]: color };
+      previewSelection(change, cells);
+      clearTimeout(commitTimer);
+      commitTimer = setTimeout(() => commitSelection(change, cells), 250);
+    }
+
+    picker.addEventListener('pointerdown', captureSelection);
+    picker.addEventListener('focus', captureSelection);
     picker.addEventListener('input', () => {
       hex.value = picker.value.toUpperCase();
       hex.setAttribute('aria-invalid', 'false');
@@ -190,8 +198,13 @@
     });
     picker.addEventListener('change', () => {
       clearTimeout(commitTimer);
-      commitSelection({ [property]: picker.value });
+      commitSelection(
+        { [property]: picker.value },
+        interactionCells.length ? interactionCells : getSelectedCells()
+      );
     });
+    hex.addEventListener('pointerdown', captureSelection);
+    hex.addEventListener('focus', captureSelection);
     hex.addEventListener('input', () => {
       const color = normalizeHex(hex.value);
       hex.setAttribute('aria-invalid', String(!color));
@@ -204,7 +217,10 @@
       if (!color) return;
       hex.value = color.toUpperCase();
       clearTimeout(commitTimer);
-      commitSelection({ [property]: color });
+      commitSelection(
+        { [property]: color },
+        interactionCells.length ? interactionCells : getSelectedCells()
+      );
     });
     hex.addEventListener('blur', () => {
       const color = normalizeHex(hex.value);
@@ -236,8 +252,8 @@
     return null;
   }
 
-  function previewSelection(changes) {
-    for (const cell of getSelectedCells()) {
+  function previewSelection(changes, cells = getSelectedCells()) {
+    for (const cell of cells) {
       const element = viewElementForNode(cell.node);
       if (!element) continue;
       for (const [property, value] of Object.entries(changes)) {
@@ -248,9 +264,8 @@
     refreshSelectionStatus();
   }
 
-  function commitSelection(changes) {
+  function commitSelection(changes, cells = getSelectedCells()) {
     const surface = getSurface();
-    const cells = getSelectedCells();
     const status = panel?.querySelector('.ws-status');
     if (!surface || !cells.length) {
       if (status) status.textContent = 'Selecciona primero una celda, fila o columna de la tabla.';
