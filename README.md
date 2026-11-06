@@ -55,9 +55,11 @@ se escriben accidentalmente. **Restablecer bordes y padding** recupera esos valo
 originales en la selección actual.
 
 La pantalla principal incluye **Resetear tabla**, disponible al seleccionar la
-tabla completa. Elimina todos los cambios de WikiStyle y recupera el formato que
-tenía la tabla al abrir VisualEditor, incluyendo alineaciones, colores, bordes,
-padding y anchos.
+tabla completa. Es un borrado total de formato: elimina `class`, `style`,
+`bgcolor`, `width`, `height`, `align`, `valign`, `border`, `bordercolor`,
+`cellpadding`, `cellspacing`, `rules` y `frame` de la tabla, sus secciones, filas,
+encabezado y celdas. Conserva contenido y estructura, incluidos `rowspan` y
+`colspan`.
 
 ## Probar la extensión
 

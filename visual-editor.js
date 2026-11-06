@@ -60,8 +60,27 @@
       if (original?.style?.cssText) domCell.style.cssText = original.style.cssText;
       dmClass.static.applyAlignmentAttributes(dataElement.attributes || {}, domCell);
       applyModelStyle(domCell, dataElement.attributes || {});
+      if (dataElement.attributes?.wikistyleNukeStyles) nukeSerializedElement(domCell);
       return domElements;
     };
+
+    [
+      window.ve.dm.TableNode,
+      window.ve.dm.TableSectionNode,
+      window.ve.dm.TableRowNode,
+      window.ve.dm.TableCaptionNode
+    ].filter(Boolean).forEach((nodeClass) => {
+      const originalToDom = nodeClass.static.toDomElements;
+      if (typeof originalToDom !== 'function' || nodeClass.static.__wikiStyleNukePatched) return;
+      nodeClass.static.toDomElements = function (dataElement, doc, ...args) {
+        const elements = originalToDom.call(this, dataElement, doc, ...args);
+        if (dataElement.attributes?.wikistyleNukeStyles) {
+          elements.forEach(nukeSerializedElement);
+        }
+        return elements;
+      };
+      nodeClass.static.__wikiStyleNukePatched = true;
+    });
 
     const originalUpdateStyles = ceClass.static.updateStyles;
     ceClass.static.updateStyles = function ($element, model) {
@@ -102,10 +121,16 @@
       const preparedOriginals = Array.from(originalElements, (original, index) => {
         const target = targetElements[index];
         const properties = target?.__wikiStyleHandledProperties || [];
-        if (!target?.__wikiStyleBackgroundHandled && !target?.__wikiStyleWidthHandled && !properties.length) {
+        if (
+          !target?.__wikiStyleBackgroundHandled &&
+          !target?.__wikiStyleWidthHandled &&
+          !target?.__wikiStyleNukeStyles &&
+          !properties.length
+        ) {
           return original;
         }
         const clone = original.cloneNode(true);
+        if (target.__wikiStyleNukeStyles) nukeSerializedElement(clone);
         if (target.__wikiStyleBackgroundHandled) {
           clone.removeAttribute?.('bgcolor');
           clone.style?.removeProperty('background-color');
@@ -134,6 +159,14 @@
     if (Object.hasOwn(attributes, 'wikistyleWidth')) {
       setCellWidth(element, attributes.wikistyleWidth);
     }
+  }
+
+  function nukeSerializedElement(element) {
+    [
+      'style', 'class', 'bgcolor', 'width', 'height', 'align', 'valign',
+      'border', 'bordercolor', 'cellpadding', 'cellspacing', 'rules', 'frame'
+    ].forEach((attribute) => element.removeAttribute?.(attribute));
+    element.__wikiStyleNukeStyles = true;
   }
 
   function setManagedStyle(element, property, value) {
@@ -757,41 +790,54 @@
 
   function resetWholeTable() {
     const table = getWholeTableRows();
+    const surface = getSurface();
     const status = panel?.querySelector('.ws-status');
-    if (!table) {
+    if (!table || !surface) {
       if (status) status.textContent = 'Selecciona la tabla completa para restablecerla.';
       return;
     }
-    const cells = [...new Map(table.rows.flat().map((cell) => [cell.node, cell])).values()];
-    const entries = cells.map((cell) => {
-      const original = cell.node.getOriginalDomElements?.()[0];
-      return {
-        cell,
-        attributes: {
+    const surfaceModel = surface.getModel();
+    const documentModel = surfaceModel.getDocument();
+    const selection = surfaceModel.getSelection();
+    const nodes = [];
+    const collect = (node) => {
+      nodes.push(node);
+      if (node instanceof window.ve.dm.TableCellNode) return;
+      (node.children || node.getChildren?.() || []).forEach(collect);
+    };
+    collect(selection.getTableNode(documentModel));
+
+    const entries = nodes.map((node) => ({
+      node,
+      attributes: node instanceof window.ve.dm.TableCellNode
+        ? {
           ...Object.fromEntries(Object.keys(managedStyles).map((name) => [name, undefined])),
           wikistyleBackgroundColor: undefined,
           wikistyleColor: undefined,
           wikistyleWidth: undefined,
-          textAlign: original?.style?.textAlign || undefined,
-          valign: original?.getAttribute?.('valign') || undefined
+          wikistyleNukeStyles: true,
+          align: undefined,
+          valign: undefined,
+          textAlign: undefined,
+          verticalAlign: undefined
         }
-      };
-    });
-    commitCellAttributes(entries, 'Tabla restablecida a su formato inicial.');
-    restoreWholeTablePreview(cells);
+        : { wikistyleNukeStyles: true }
+    }));
+    commitModelAttributes(entries, 'Tabla completamente desprovista de estilos.');
+    nodes.forEach((node) => nukeViewElement(viewElementForModelNode(node)));
   }
 
-  function restoreWholeTablePreview(cells) {
-    cells.forEach((cell) => {
-      const element = viewElementForNode(cell.node);
-      const original = cell.node.getOriginalDomElements?.()[0];
-      if (!element) return;
-      element.style.cssText = original?.style?.cssText || '';
-      ['bgcolor', 'width', 'align', 'valign'].forEach((attribute) => {
-        if (original?.hasAttribute?.(attribute)) element.setAttribute(attribute, original.getAttribute(attribute));
-        else element.removeAttribute(attribute);
-      });
-    });
+  function nukeViewElement(element) {
+    if (!element) return;
+    element.removeAttribute('style');
+    [
+      'bgcolor', 'width', 'height', 'align', 'valign', 'border', 'bordercolor',
+      'cellpadding', 'cellspacing', 'rules', 'frame'
+    ].forEach((attribute) => element.removeAttribute(attribute));
+    const interfaceClasses = [...element.classList].filter(
+      (name) => name.startsWith('ve-') || name.startsWith('oo-ui-')
+    );
+    element.className = interfaceClasses.join(' ');
   }
 
   function applyColumnWidth(cells, width) {
@@ -800,15 +846,22 @@
   }
 
   function commitCellAttributes(entries, message) {
+    commitModelAttributes(
+      entries.map(({ cell, attributes }) => ({ node: cell.node, attributes })),
+      message
+    );
+  }
+
+  function commitModelAttributes(entries, message) {
     const surface = getSurface();
     const status = panel?.querySelector('.ws-status');
     if (!surface || !entries.length) return;
     const surfaceModel = surface.getModel();
     const documentModel = surfaceModel.getDocument();
-    const transactions = entries.map(({ cell, attributes }) =>
+    const transactions = entries.map(({ node, attributes }) =>
       window.ve.dm.TransactionBuilder.static.newFromAttributeChanges(
         documentModel,
-        cell.node.getOuterRange().start,
+        node.getOuterRange().start,
         attributes
       )
     );
@@ -835,6 +888,15 @@
 
   function viewElementForNode(node) {
     for (const element of document.querySelectorAll('.ve-ce-tableCellNode')) {
+      if (window.jQuery?.(element).data('view')?.getModel?.() === node) return element;
+    }
+    return null;
+  }
+
+  function viewElementForModelNode(node) {
+    for (const element of document.querySelectorAll(
+      '.ve-ce-tableNode, .ve-ce-tableSectionNode, .ve-ce-tableRowNode, .ve-ce-tableCaptionNode, .ve-ce-tableCellNode'
+    )) {
       if (window.jQuery?.(element).data('view')?.getModel?.() === node) return element;
     }
     return null;
