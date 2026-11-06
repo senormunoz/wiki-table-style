@@ -123,7 +123,8 @@
   background: #fff;
 }
 
-#wikistyle-editor .ws-stripes-open {
+#wikistyle-editor .ws-stripes-open,
+#wikistyle-editor .ws-layout-open {
   width: 100%;
   margin-top: 14px;
   padding: 9px 10px;
@@ -136,7 +137,8 @@
   font-weight: 650;
 }
 
-#wikistyle-editor .ws-stripes-open:disabled {
+#wikistyle-editor .ws-stripes-open:disabled,
+#wikistyle-editor .ws-layout-open:disabled {
   border-color: #c8ccd1;
   color: #72777d;
   cursor: not-allowed;
@@ -152,6 +154,104 @@
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 8px 28px rgb(0 0 0 / 22%);
+}
+
+#wikistyle-editor .ws-layout-dialog {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  width: 410px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 16px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 28%);
+}
+
+#wikistyle-editor .ws-format-group {
+  margin: 12px 0 0;
+  padding: 10px;
+  border: 1px solid #c8ccd1;
+  border-radius: 8px;
+}
+
+#wikistyle-editor .ws-format-group legend {
+  padding: 0 5px;
+  font-weight: 700;
+}
+
+#wikistyle-editor .ws-four-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+#wikistyle-editor .ws-four-sides label {
+  margin: 0;
+  font-size: 12px;
+}
+
+#wikistyle-editor .ws-four-sides label span,
+#wikistyle-editor .ws-width-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  font-weight: 400;
+}
+
+#wikistyle-editor .ws-number,
+#wikistyle-editor .ws-select {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid #a2a9b1;
+  border-radius: 6px;
+  color: #202122;
+  background: #fff;
+  font: inherit;
+}
+
+#wikistyle-editor .ws-number[aria-invalid="true"] {
+  border-color: #d73333;
+  box-shadow: 0 0 0 1px #d73333;
+}
+
+#wikistyle-editor .ws-link-sides {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 9px 0 0;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+#wikistyle-editor .ws-link-sides input {
+  margin: 0;
+}
+
+#wikistyle-editor .ws-width-row .ws-number {
+  width: 95px;
+}
+
+#wikistyle-editor .ws-width-row button {
+  margin-left: auto;
+  padding: 7px 10px;
+  border: 1px solid #6d4aff;
+  border-radius: 6px;
+  color: #5738d6;
+  cursor: pointer;
+  background: #f1edff;
+}
+
+#wikistyle-editor .ws-width-row button:disabled {
+  border-color: #c8ccd1;
+  color: #72777d;
+  cursor: not-allowed;
+  background: #eaecf0;
 }
 
 #wikistyle-editor .ws-stripes-dialog .ws-color-row {

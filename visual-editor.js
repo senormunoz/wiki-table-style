@@ -5,6 +5,16 @@
   let panel = null;
   let statusTimer = null;
   let commitTimer = null;
+  const managedStyles = {
+    wikistyleBorderTop: 'border-top',
+    wikistyleBorderRight: 'border-right',
+    wikistyleBorderBottom: 'border-bottom',
+    wikistyleBorderLeft: 'border-left',
+    wikistylePaddingTop: 'padding-top',
+    wikistylePaddingRight: 'padding-right',
+    wikistylePaddingBottom: 'padding-bottom',
+    wikistylePaddingLeft: 'padding-left'
+  };
 
   document.addEventListener('wikistyle:open-visual-editor', () => {
     if (!getSurface()) {
@@ -32,6 +42,12 @@
       if (style?.color) {
         dataElement.attributes.wikistyleColor = style.color;
       }
+      for (const [attribute, property] of Object.entries(managedStyles)) {
+        const value = style?.getPropertyValue(property);
+        if (value) dataElement.attributes[attribute] = value;
+      }
+      const width = domElements[0]?.getAttribute('width');
+      if (width) dataElement.attributes.wikistyleWidth = width;
       return dataElement;
     };
 
@@ -54,6 +70,12 @@
       const color = model.getAttribute('wikistyleColor');
       if (backgroundColor !== undefined) setCellBackground($element[0], backgroundColor);
       if (color !== undefined) setStyle($element[0], 'color', color);
+      for (const [attribute, property] of Object.entries(managedStyles)) {
+        const value = model.getAttribute(attribute);
+        if (value !== undefined) setManagedStyle($element[0], property, value);
+      }
+      const width = model.getAttribute('wikistyleWidth');
+      if (width !== undefined) setCellWidth($element[0], width);
     };
 
     const originalAttributeChange = ceClass.prototype.onAttributeChange;
@@ -61,15 +83,25 @@
       originalAttributeChange.call(this, key, from, to);
       if (key === 'wikistyleBackgroundColor') setCellBackground(this.$element[0], to);
       if (key === 'wikistyleColor') setStyle(this.$element[0], 'color', to);
+      if (managedStyles[key]) setManagedStyle(this.$element[0], managedStyles[key], to);
+      if (key === 'wikistyleWidth') setCellWidth(this.$element[0], to);
     };
 
     const originalRenderAttributes = converterClass.static.renderHtmlAttributeList;
     converterClass.static.renderHtmlAttributeList = function (originalElements, targetElements, ...args) {
-      const preparedOriginals = originalElements.map((original, index) => {
-        if (!targetElements[index]?.__wikiStyleBackgroundHandled) return original;
+      const preparedOriginals = Array.from(originalElements, (original, index) => {
+        const target = targetElements[index];
+        const properties = target?.__wikiStyleHandledProperties || [];
+        if (!target?.__wikiStyleBackgroundHandled && !target?.__wikiStyleWidthHandled && !properties.length) {
+          return original;
+        }
         const clone = original.cloneNode(true);
-        clone.removeAttribute?.('bgcolor');
-        clone.style?.removeProperty('background-color');
+        if (target.__wikiStyleBackgroundHandled) {
+          clone.removeAttribute?.('bgcolor');
+          clone.style?.removeProperty('background-color');
+        }
+        if (target.__wikiStyleWidthHandled) clone.removeAttribute?.('width');
+        properties.forEach((property) => clone.style?.removeProperty(property));
         if (clone.style && !clone.getAttribute('style')) clone.removeAttribute('style');
         return clone;
       });
@@ -86,6 +118,26 @@
     if (Object.hasOwn(attributes, 'wikistyleColor')) {
       setStyle(element, 'color', attributes.wikistyleColor);
     }
+    for (const [attribute, property] of Object.entries(managedStyles)) {
+      if (Object.hasOwn(attributes, attribute)) setManagedStyle(element, property, attributes[attribute]);
+    }
+    if (Object.hasOwn(attributes, 'wikistyleWidth')) {
+      setCellWidth(element, attributes.wikistyleWidth);
+    }
+  }
+
+  function setManagedStyle(element, property, value) {
+    element.__wikiStyleHandledProperties ||= [];
+    if (!element.__wikiStyleHandledProperties.includes(property)) {
+      element.__wikiStyleHandledProperties.push(property);
+    }
+    setStyle(element, property, value);
+  }
+
+  function setCellWidth(element, value) {
+    element.__wikiStyleWidthHandled = true;
+    if (value) element.setAttribute('width', value);
+    else element.removeAttribute('width');
   }
 
   function setCellBackground(element, value) {
@@ -186,6 +238,7 @@
         <button data-clear="color">Original</button>
       </div>
       <button class="ws-stripes-open" disabled>Configurar filas alternas…</button>
+      <button class="ws-layout-open" disabled>Bordes, padding y ancho…</button>
       <p class="ws-note ws-status" role="status">Los cambios se muestran y se aplican inmediatamente a la selección actual.</p>`;
     document.documentElement.append(panel);
     panel.querySelector('.ws-close').addEventListener('click', closePanel);
@@ -220,6 +273,7 @@
       });
     });
     panel.querySelector('.ws-stripes-open').addEventListener('click', showStripeDialog);
+    panel.querySelector('.ws-layout-open').addEventListener('click', showLayoutDialog);
 
     statusTimer = setInterval(refreshSelectionStatus, 250);
     refreshSelectionStatus();
@@ -426,6 +480,199 @@
     }
   }
 
+  function getSelectedColumnCells() {
+    const surface = getSurface();
+    if (!surface || !window.ve?.dm) return [];
+    const surfaceModel = surface.getModel();
+    const documentModel = surfaceModel.getDocument();
+    const selection = surfaceModel.getSelection();
+    if (
+      !(selection instanceof window.ve.dm.TableSelection) ||
+      !selection.isFullCol(documentModel) ||
+      selection.getColCount() !== 1
+    ) {
+      return [];
+    }
+    return selection.getMatrixCells(documentModel).filter((cell) => cell.node.getColspan() === 1);
+  }
+
+  function showLayoutDialog() {
+    const cells = getSelectedCells();
+    const columnCells = getSelectedColumnCells();
+    const status = panel?.querySelector('.ws-status');
+    if (!cells.length) {
+      if (status) status.textContent = 'Selecciona celdas de una tabla para editar su formato.';
+      return;
+    }
+
+    panel.querySelector('.ws-layout-dialog')?.remove();
+    const dialog = document.createElement('section');
+    dialog.className = 'ws-layout-dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-label', 'Bordes, padding y ancho');
+    dialog.innerHTML = `
+      <div class="ws-head"><strong>Bordes y espacio</strong><button class="ws-close" aria-label="Cerrar">×</button></div>
+      ${borderControls('outer', 'Contorno exterior')}
+      ${borderControls('inner', 'Bordes interiores')}
+      <fieldset class="ws-format-group ws-padding-group">
+        <legend>Padding de las celdas</legend>
+        ${sideInputs('padding', 0)}
+        <label class="ws-link-sides"><input type="checkbox" data-link="padding" checked> Mismo valor en los cuatro lados</label>
+      </fieldset>
+      <fieldset class="ws-format-group">
+        <legend>Ancho de columna</legend>
+        <div class="ws-width-row">
+          <input class="ws-number" type="number" min="1" max="100" step="0.1" placeholder="10" data-column-width ${columnCells.length ? '' : 'disabled'}>
+          <span>%</span>
+          <button class="ws-column-apply" ${columnCells.length ? '' : 'disabled'}>Aplicar ancho</button>
+        </div>
+        <p class="ws-note">${columnCells.length
+          ? 'Se aplicará a la columna completa; las celdas con colspan se omiten.'
+          : 'Selecciona una única columna completa para establecer su ancho.'}</p>
+      </fieldset>
+      <div class="ws-actions">
+        <button class="ws-layout-cancel">Cancelar</button>
+        <button class="ws-save ws-layout-apply">Aplicar bordes y padding</button>
+      </div>`;
+    panel.append(dialog);
+
+    ['outer', 'inner'].forEach((prefix) => {
+      bindDialogColor(dialog, `#ws-${prefix}-color`, `#ws-${prefix}-color-hex`);
+      bindSideLink(dialog, prefix);
+    });
+    bindSideLink(dialog, 'padding');
+
+    const close = () => dialog.remove();
+    dialog.querySelector('.ws-close').addEventListener('click', close);
+    dialog.querySelector('.ws-layout-cancel').addEventListener('click', close);
+    dialog.querySelector('.ws-layout-apply').addEventListener('click', () => {
+      applyBordersAndPadding(cells, readBorder(dialog, 'outer'), readBorder(dialog, 'inner'), readSides(dialog, 'padding'));
+      close();
+    });
+    dialog.querySelector('.ws-column-apply').addEventListener('click', () => {
+      const input = dialog.querySelector('[data-column-width]');
+      const width = Number(input.value);
+      if (!Number.isFinite(width) || width < 1 || width > 100) {
+        input.setAttribute('aria-invalid', 'true');
+        return;
+      }
+      input.setAttribute('aria-invalid', 'false');
+      applyColumnWidth(columnCells, width);
+    });
+  }
+
+  function borderControls(prefix, title) {
+    return `
+      <fieldset class="ws-format-group">
+        <legend>${title}</legend>
+        ${sideInputs(prefix, 1)}
+        <label class="ws-link-sides"><input type="checkbox" data-link="${prefix}" checked> Mismo grosor en los cuatro lados</label>
+        <label for="ws-${prefix}-style">Estilo</label>
+        <select id="ws-${prefix}-style" class="ws-select">
+          <option value="solid">Sólido</option>
+          <option value="dashed">Discontinuo</option>
+          <option value="dotted">Punteado</option>
+          <option value="double">Doble</option>
+          <option value="none">Sin borde</option>
+        </select>
+        <label for="ws-${prefix}-color">Color</label>
+        <div class="ws-color-row">
+          <input id="ws-${prefix}-color" type="color" value="#a2a9b1">
+          <input id="ws-${prefix}-color-hex" class="ws-hex" type="text" value="#A2A9B1" maxlength="7" spellcheck="false" aria-label="Color hexadecimal de ${title.toLowerCase()}">
+        </div>
+      </fieldset>`;
+  }
+
+  function sideInputs(prefix, initialValue) {
+    return `
+      <div class="ws-four-sides">
+        ${['top', 'right', 'bottom', 'left'].map((side) => `
+          <label>${{ top: 'Arriba', right: 'Derecha', bottom: 'Abajo', left: 'Izquierda' }[side]}
+            <span><input class="ws-number" type="number" min="0" step="0.1" value="${initialValue}" data-side-group="${prefix}" data-side="${side}"> px</span>
+          </label>`).join('')}
+      </div>`;
+  }
+
+  function bindSideLink(dialog, prefix) {
+    const inputs = [...dialog.querySelectorAll(`[data-side-group="${prefix}"]`)];
+    const link = dialog.querySelector(`[data-link="${prefix}"]`);
+    inputs.forEach((input) => {
+      input.addEventListener('input', () => {
+        if (link.checked) inputs.forEach((item) => { if (item !== input) item.value = input.value; });
+      });
+    });
+  }
+
+  function readSides(dialog, prefix) {
+    return Object.fromEntries(['top', 'right', 'bottom', 'left'].map((side) => {
+      const value = Number(dialog.querySelector(`[data-side-group="${prefix}"][data-side="${side}"]`).value);
+      return [side, Number.isFinite(value) && value >= 0 ? value : 0];
+    }));
+  }
+
+  function readBorder(dialog, prefix) {
+    return {
+      widths: readSides(dialog, prefix),
+      style: dialog.querySelector(`#ws-${prefix}-style`).value,
+      color: dialog.querySelector(`#ws-${prefix}-color`).value.toUpperCase()
+    };
+  }
+
+  function applyBordersAndPadding(cells, outer, inner, padding) {
+    const rows = cells.map((cell) => ({
+      cell,
+      top: cell.row,
+      right: cell.col + cell.node.getColspan() - 1,
+      bottom: cell.row + cell.node.getRowspan() - 1,
+      left: cell.col
+    }));
+    const bounds = {
+      top: Math.min(...rows.map((item) => item.top)),
+      right: Math.max(...rows.map((item) => item.right)),
+      bottom: Math.max(...rows.map((item) => item.bottom)),
+      left: Math.min(...rows.map((item) => item.left))
+    };
+    const entries = rows.map((item) => {
+      const attributes = {};
+      ['top', 'right', 'bottom', 'left'].forEach((side) => {
+        const border = item[side] === bounds[side] ? outer : inner;
+        const name = `wikistyleBorder${side[0].toUpperCase()}${side.slice(1)}`;
+        attributes[name] = `${border.widths[side]}px ${border.style} ${border.color}`;
+        const paddingName = `wikistylePadding${side[0].toUpperCase()}${side.slice(1)}`;
+        attributes[paddingName] = `${padding[side]}px`;
+      });
+      return { cell: item.cell, attributes };
+    });
+    commitCellAttributes(entries, `Bordes y padding aplicados a ${cells.length} ${cells.length === 1 ? 'celda' : 'celdas'}.`);
+  }
+
+  function applyColumnWidth(cells, width) {
+    const entries = cells.map((cell) => ({ cell, attributes: { wikistyleWidth: `${width}%` } }));
+    commitCellAttributes(entries, `Ancho del ${width}% aplicado a ${cells.length} ${cells.length === 1 ? 'celda' : 'celdas'} de la columna.`);
+  }
+
+  function commitCellAttributes(entries, message) {
+    const surface = getSurface();
+    const status = panel?.querySelector('.ws-status');
+    if (!surface || !entries.length) return;
+    const surfaceModel = surface.getModel();
+    const documentModel = surfaceModel.getDocument();
+    const transactions = entries.map(({ cell, attributes }) =>
+      window.ve.dm.TransactionBuilder.static.newFromAttributeChanges(
+        documentModel,
+        cell.node.getOuterRange().start,
+        attributes
+      )
+    );
+    try {
+      surfaceModel.change(transactions);
+      surfaceModel.breakpoint();
+      if (status) status.textContent = `${message} Puedes deshacerlo con Ctrl+Z.`;
+    } catch (error) {
+      if (status) status.textContent = `No se pudo aplicar el formato: ${error.message}`;
+    }
+  }
+
   function refreshSelectionStatus() {
     if (!panel) return;
     const cells = getSelectedCells();
@@ -433,6 +680,7 @@
       ? `${cells.length} ${cells.length === 1 ? 'celda seleccionada' : 'celdas seleccionadas'}`
       : 'Selecciona una celda, fila o columna en la tabla.';
     panel.querySelector('.ws-stripes-open').disabled = !getWholeTableRows();
+    panel.querySelector('.ws-layout-open').disabled = !cells.length;
   }
 
   function viewElementForNode(node) {
