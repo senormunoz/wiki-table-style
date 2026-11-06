@@ -81,10 +81,20 @@
     const originalAttributeChange = ceClass.prototype.onAttributeChange;
     ceClass.prototype.onAttributeChange = function (key, from, to) {
       originalAttributeChange.call(this, key, from, to);
-      if (key === 'wikistyleBackgroundColor') setCellBackground(this.$element[0], to);
-      if (key === 'wikistyleColor') setStyle(this.$element[0], 'color', to);
-      if (managedStyles[key]) setManagedStyle(this.$element[0], managedStyles[key], to);
-      if (key === 'wikistyleWidth') setCellWidth(this.$element[0], to);
+      const original = to === undefined ? this.model.getOriginalDomElements?.()[0] : null;
+      if (key === 'wikistyleBackgroundColor') {
+        if (original) restoreBackground(this.$element[0], original);
+        else setCellBackground(this.$element[0], to);
+      }
+      if (key === 'wikistyleColor') {
+        setStyle(this.$element[0], 'color', original?.style?.color || to);
+      }
+      if (managedStyles[key]) {
+        setManagedStyle(this.$element[0], managedStyles[key], original?.style?.getPropertyValue(managedStyles[key]) || to);
+      }
+      if (key === 'wikistyleWidth') {
+        setCellWidth(this.$element[0], original?.getAttribute?.('width') || to);
+      }
     };
 
     const originalRenderAttributes = converterClass.static.renderHtmlAttributeList;
@@ -147,6 +157,18 @@
     const hex = backgroundToHex(value);
     if (hex) element.setAttribute('bgcolor', hex);
     else element.removeAttribute('bgcolor');
+  }
+
+  function restoreBackground(element, original) {
+    element.style.removeProperty('background-color');
+    element.removeAttribute('bgcolor');
+    if (original.style?.backgroundColor) {
+      element.style.backgroundColor = original.style.backgroundColor;
+    }
+    if (original.hasAttribute?.('bgcolor')) {
+      element.setAttribute('bgcolor', original.getAttribute('bgcolor'));
+    }
+    if (!element.getAttribute('style')) element.removeAttribute('style');
   }
 
   function backgroundToHex(value) {
@@ -240,6 +262,7 @@
       <button class="ws-stripes-open" disabled>Configurar filas alternas…</button>
       <button class="ws-layout-open" disabled>Contorno, bordes y padding…</button>
       <button class="ws-width-open" disabled>Ancho de columna…</button>
+      <button class="ws-reset-table" disabled>Resetear tabla</button>
       <p class="ws-note ws-status" role="status">Los cambios se muestran y se aplican inmediatamente a la selección actual.</p>`;
     document.documentElement.append(panel);
     panel.querySelector('.ws-close').addEventListener('click', closePanel);
@@ -276,6 +299,7 @@
     panel.querySelector('.ws-stripes-open').addEventListener('click', showStripeDialog);
     panel.querySelector('.ws-layout-open').addEventListener('click', showLayoutDialog);
     panel.querySelector('.ws-width-open').addEventListener('click', showWidthDialog);
+    panel.querySelector('.ws-reset-table').addEventListener('click', resetWholeTable);
 
     statusTimer = setInterval(refreshSelectionStatus, 250);
     refreshSelectionStatus();
@@ -536,10 +560,11 @@
         <legend>Padding de las celdas</legend>
         ${sideInputs('padding', 0)}
         <label class="ws-link-sides"><input type="checkbox" data-link="padding" checked> Mismo valor en los cuatro lados</label>
+        <button class="ws-section-apply" data-apply-section="padding">Aplicar padding</button>
       </fieldset>
       <div class="ws-actions">
-        <button class="ws-layout-cancel">Cancelar</button>
-        <button class="ws-save ws-layout-apply">Aplicar bordes y padding</button>
+        <button class="ws-layout-close">Cerrar</button>
+        <button class="ws-reset-layout">Restablecer bordes y padding</button>
       </div>`;
     panel.append(dialog);
 
@@ -551,9 +576,18 @@
 
     const close = () => dialog.remove();
     dialog.querySelector('.ws-close').addEventListener('click', close);
-    dialog.querySelector('.ws-layout-cancel').addEventListener('click', close);
-    dialog.querySelector('.ws-layout-apply').addEventListener('click', () => {
-      applyBordersAndPadding(cells, readBorder(dialog, 'outer'), readBorder(dialog, 'inner'), readSides(dialog, 'padding'));
+    dialog.querySelector('.ws-layout-close').addEventListener('click', close);
+    dialog.querySelector('[data-apply-section="outer"]').addEventListener('click', () => {
+      applyBorderSection(cells, readBorder(dialog, 'outer'), 'outer');
+    });
+    dialog.querySelector('[data-apply-section="inner"]').addEventListener('click', () => {
+      applyBorderSection(cells, readBorder(dialog, 'inner'), 'inner');
+    });
+    dialog.querySelector('[data-apply-section="padding"]').addEventListener('click', () => {
+      applyPaddingSection(cells, readSides(dialog, 'padding'));
+    });
+    dialog.querySelector('.ws-reset-layout').addEventListener('click', () => {
+      resetLayoutStyles(cells);
       close();
     });
   }
@@ -620,6 +654,7 @@
           <input id="ws-${prefix}-color" type="color" value="#a2a9b1">
           <input id="ws-${prefix}-color-hex" class="ws-hex" type="text" value="#A2A9B1" maxlength="7" spellcheck="false" aria-label="Color hexadecimal de ${title.toLowerCase()}">
         </div>
+        <button class="ws-section-apply" data-apply-section="${prefix}">Aplicar ${prefix === 'outer' ? 'contorno' : 'bordes interiores'}</button>
       </fieldset>`;
   }
 
@@ -658,7 +693,7 @@
     };
   }
 
-  function applyBordersAndPadding(cells, outer, inner, padding) {
+  function getCellGeometry(cells) {
     const rows = cells.map((cell) => ({
       cell,
       top: cell.row,
@@ -672,18 +707,91 @@
       bottom: Math.max(...rows.map((item) => item.bottom)),
       left: Math.min(...rows.map((item) => item.left))
     };
+    return { rows, bounds };
+  }
+
+  function applyBorderSection(cells, border, mode) {
+    const { rows, bounds } = getCellGeometry(cells);
     const entries = rows.map((item) => {
       const attributes = {};
       ['top', 'right', 'bottom', 'left'].forEach((side) => {
-        const border = item[side] === bounds[side] ? outer : inner;
+        const isOuter = item[side] === bounds[side];
+        if ((mode === 'outer') !== isOuter) return;
         const name = `wikistyleBorder${side[0].toUpperCase()}${side.slice(1)}`;
         attributes[name] = `${border.widths[side]}px ${border.style} ${border.color}`;
-        const paddingName = `wikistylePadding${side[0].toUpperCase()}${side.slice(1)}`;
-        attributes[paddingName] = `${padding[side]}px`;
       });
       return { cell: item.cell, attributes };
+    }).filter((entry) => Object.keys(entry.attributes).length);
+    const label = mode === 'outer' ? 'Contorno exterior' : 'Bordes interiores';
+    commitCellAttributes(entries, `${label} aplicado a la selección.`);
+  }
+
+  function applyPaddingSection(cells, padding) {
+    const entries = cells.map((cell) => ({
+      cell,
+      attributes: Object.fromEntries(['top', 'right', 'bottom', 'left'].map((side) => [
+        `wikistylePadding${side[0].toUpperCase()}${side.slice(1)}`,
+        `${padding[side]}px`
+      ]))
+    }));
+    commitCellAttributes(entries, `Padding aplicado a ${cells.length} ${cells.length === 1 ? 'celda' : 'celdas'}.`);
+  }
+
+  function resetLayoutStyles(cells) {
+    const attributes = Object.fromEntries(Object.keys(managedStyles).map((name) => [name, undefined]));
+    const entries = cells.map((cell) => ({ cell, attributes }));
+    commitCellAttributes(entries, 'Contorno, bordes y padding restablecidos.');
+    restoreManagedPreview(cells);
+  }
+
+  function restoreManagedPreview(cells) {
+    cells.forEach((cell) => {
+      const element = viewElementForNode(cell.node);
+      const original = cell.node.getOriginalDomElements?.()[0];
+      if (!element) return;
+      Object.values(managedStyles).forEach((property) => {
+        setStyle(element, property, original?.style?.getPropertyValue(property) || '');
+      });
     });
-    commitCellAttributes(entries, `Bordes y padding aplicados a ${cells.length} ${cells.length === 1 ? 'celda' : 'celdas'}.`);
+  }
+
+  function resetWholeTable() {
+    const table = getWholeTableRows();
+    const status = panel?.querySelector('.ws-status');
+    if (!table) {
+      if (status) status.textContent = 'Selecciona la tabla completa para restablecerla.';
+      return;
+    }
+    const cells = [...new Map(table.rows.flat().map((cell) => [cell.node, cell])).values()];
+    const entries = cells.map((cell) => {
+      const original = cell.node.getOriginalDomElements?.()[0];
+      return {
+        cell,
+        attributes: {
+          ...Object.fromEntries(Object.keys(managedStyles).map((name) => [name, undefined])),
+          wikistyleBackgroundColor: undefined,
+          wikistyleColor: undefined,
+          wikistyleWidth: undefined,
+          textAlign: original?.style?.textAlign || undefined,
+          valign: original?.getAttribute?.('valign') || undefined
+        }
+      };
+    });
+    commitCellAttributes(entries, 'Tabla restablecida a su formato inicial.');
+    restoreWholeTablePreview(cells);
+  }
+
+  function restoreWholeTablePreview(cells) {
+    cells.forEach((cell) => {
+      const element = viewElementForNode(cell.node);
+      const original = cell.node.getOriginalDomElements?.()[0];
+      if (!element) return;
+      element.style.cssText = original?.style?.cssText || '';
+      ['bgcolor', 'width', 'align', 'valign'].forEach((attribute) => {
+        if (original?.hasAttribute?.(attribute)) element.setAttribute(attribute, original.getAttribute(attribute));
+        else element.removeAttribute(attribute);
+      });
+    });
   }
 
   function applyColumnWidth(cells, width) {
@@ -722,6 +830,7 @@
     panel.querySelector('.ws-stripes-open').disabled = !getWholeTableRows();
     panel.querySelector('.ws-layout-open').disabled = !cells.length;
     panel.querySelector('.ws-width-open').disabled = !getSelectedColumnCells().length;
+    panel.querySelector('.ws-reset-table').disabled = !getWholeTableRows();
   }
 
   function viewElementForNode(node) {

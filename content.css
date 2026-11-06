@@ -147,6 +147,25 @@
   background: #eaecf0;
 }
 
+#wikistyle-editor .ws-reset-table {
+  display: block;
+  margin: 10px 0 0 auto;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 5px;
+  color: #72777d;
+  cursor: pointer;
+  background: transparent;
+  font: 12px/1.3 system-ui, sans-serif;
+  text-decoration: underline;
+}
+
+#wikistyle-editor .ws-reset-table:disabled {
+  color: #a2a9b1;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
 #wikistyle-editor .ws-stripes-dialog {
   position: absolute;
   z-index: 1;
@@ -188,6 +207,25 @@
 #wikistyle-editor .ws-format-group legend {
   padding: 0 5px;
   font-weight: 700;
+}
+
+#wikistyle-editor .ws-section-apply {
+  width: 100%;
+  margin-top: 10px;
+  padding: 7px 9px;
+  border: 1px solid #6d4aff;
+  border-radius: 6px;
+  color: #5738d6;
+  cursor: pointer;
+  background: #f1edff;
+  font: inherit;
+  font-weight: 650;
+}
+
+#wikistyle-editor .ws-reset-layout {
+  border-color: #d73333 !important;
+  color: #b32424 !important;
+  background: #fff5f5 !important;
 }
 
 #wikistyle-editor .ws-four-sides {

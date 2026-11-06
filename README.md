@@ -49,6 +49,16 @@ columna completa se puede asignar un ancho entre 1% y 100% mediante el atributo 
 wikicódigo `width="N%"`. La extensión recorre el índice lógico exacto de esa
 columna y no modifica las demás; las celdas con `colspan` se omiten.
 
+En la pantalla de contorno, bordes y padding cada bloque dispone de su propio
+botón **Aplicar**, de modo que los valores predeterminados de los demás bloques no
+se escriben accidentalmente. **Restablecer bordes y padding** recupera esos valores
+originales en la selección actual.
+
+La pantalla principal incluye **Resetear tabla**, disponible al seleccionar la
+tabla completa. Elimina todos los cambios de WikiStyle y recupera el formato que
+tenía la tabla al abrir VisualEditor, incluyendo alineaciones, colores, bordes,
+padding y anchos.
+
 ## Probar la extensión
 
 1. Abre `chrome://extensions` en Chrome.
