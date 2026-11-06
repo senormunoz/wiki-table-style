@@ -194,9 +194,15 @@
         <button data-align="right">Derecha</button>
       </div>
       <label for="ws-color">Color de fondo</label>
-      <input id="ws-color" type="color" value="${rgbToHex(computed.backgroundColor)}">
+      <div class="ws-color-row">
+        <input id="ws-color" type="color" value="${rgbToHex(computed.backgroundColor)}">
+        <input id="ws-color-hex" class="ws-hex" type="text" maxlength="7" spellcheck="false" aria-label="Color de fondo hexadecimal">
+      </div>
       <label for="ws-text-color">Color del texto</label>
-      <input id="ws-text-color" type="color" value="${rgbToHex(computed.color)}">
+      <div class="ws-color-row">
+        <input id="ws-text-color" type="color" value="${rgbToHex(computed.color)}">
+        <input id="ws-text-color-hex" class="ws-hex" type="text" maxlength="7" spellcheck="false" aria-label="Color de texto hexadecimal">
+      </div>
       <div class="ws-actions">
         <button class="ws-clear">Quitar estilo</button>
         <button class="ws-save">Guardar</button>
@@ -222,14 +228,14 @@
         );
       });
     });
-    panel.querySelector('#ws-color').addEventListener('input', (event) => {
-      targets.forEach((element) => { element.style.backgroundColor = event.target.value; });
+    bindColorControls('#ws-color', '#ws-color-hex', (color) => {
+      targets.forEach((element) => { element.style.backgroundColor = color; });
     });
-    panel.querySelector('#ws-text-color').addEventListener('input', (event) => {
+    bindColorControls('#ws-text-color', '#ws-text-color-hex', (color) => {
       targets.forEach((element) => applyStyle(element, {
         textAlign: element.style.textAlign,
         backgroundColor: element.style.backgroundColor,
-        color: event.target.value
+        color
       }));
     });
     panel.querySelector('.ws-close').addEventListener('click', () => closeEditor());
@@ -241,8 +247,37 @@
       panel.querySelectorAll('[data-align]').forEach((button) =>
         button.setAttribute('aria-pressed', String(current.textAlign === button.dataset.align))
       );
-      panel.querySelector('#ws-color').value = rgbToHex(current.backgroundColor);
-      panel.querySelector('#ws-text-color').value = rgbToHex(current.color);
+      setColorControls('#ws-color', '#ws-color-hex', rgbToHex(current.backgroundColor));
+      setColorControls('#ws-text-color', '#ws-text-color-hex', rgbToHex(current.color));
+    }
+
+    function setColorControls(pickerSelector, hexSelector, color) {
+      panel.querySelector(pickerSelector).value = color;
+      const hex = panel.querySelector(hexSelector);
+      hex.value = color.toUpperCase();
+      hex.setAttribute('aria-invalid', 'false');
+    }
+
+    function bindColorControls(pickerSelector, hexSelector, applyColor) {
+      const picker = panel.querySelector(pickerSelector);
+      const hex = panel.querySelector(hexSelector);
+      picker.addEventListener('input', () => {
+        hex.value = picker.value.toUpperCase();
+        hex.setAttribute('aria-invalid', 'false');
+        applyColor(picker.value);
+      });
+      hex.addEventListener('input', () => {
+        const color = normalizeHex(hex.value);
+        hex.setAttribute('aria-invalid', String(!color));
+        if (!color) return;
+        picker.value = color;
+        applyColor(color);
+      });
+      hex.addEventListener('blur', () => {
+        const color = normalizeHex(hex.value);
+        hex.value = (color || picker.value).toUpperCase();
+        hex.setAttribute('aria-invalid', 'false');
+      });
     }
 
     syncControls();
@@ -252,6 +287,14 @@
     const values = color.match(/\d+/g);
     if (!values || values.length < 3 || Number(values[3]) === 0) return '#ffffff';
     return `#${values.slice(0, 3).map((value) => Number(value).toString(16).padStart(2, '0')).join('')}`;
+  }
+
+  function normalizeHex(value) {
+    const hex = value.trim().replace(/^#/, '');
+    if (/^[0-9a-f]{3}$/i.test(hex)) {
+      return `#${[...hex].map((character) => character.repeat(2)).join('')}`.toLowerCase();
+    }
+    return /^[0-9a-f]{6}$/i.test(hex) ? `#${hex.toLowerCase()}` : null;
   }
 
   async function saveSelected() {

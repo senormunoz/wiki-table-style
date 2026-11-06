@@ -17,6 +17,10 @@ WikiStyle guarda el formato como atributos del nodo de celda de VisualEditor. No
 reemplaza celdas ni inserta estructuras de tabla nuevas, por lo que el contenido y
 la estructura original permanecen intactos.
 
+Los colores pueden elegirse con el selector visual o escribirse como código
+hexadecimal. Ambos controles permanecen sincronizados y aceptan `#RRGGBB`,
+`RRGGBB` y la forma corta `#RGB`.
+
 ## Probar la extensión
 
 1. Abre `chrome://extensions` en Chrome.

@@ -91,8 +91,28 @@
 
 #wikistyle-editor .ws-color-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
   gap: 8px;
+}
+
+#wikistyle-editor .ws-color-row input[type="color"] {
+  width: 44px;
+}
+
+#wikistyle-editor .ws-hex {
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid #a2a9b1;
+  border-radius: 6px;
+  color: #202122;
+  background: #fff;
+  font: 14px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-transform: uppercase;
+}
+
+#wikistyle-editor .ws-hex[aria-invalid="true"] {
+  border-color: #d73333;
+  box-shadow: 0 0 0 1px #d73333;
 }
 
 #wikistyle-editor .ws-color-row button {

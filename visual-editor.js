@@ -135,11 +135,13 @@
       <label for="ws-ve-background">Color de fondo</label>
       <div class="ws-color-row">
         <input id="ws-ve-background" type="color" value="#ffffff">
+        <input id="ws-ve-background-hex" class="ws-hex" type="text" value="#FFFFFF" maxlength="7" spellcheck="false" aria-label="Color de fondo hexadecimal">
         <button data-clear="backgroundColor">Sin fondo</button>
       </div>
       <label for="ws-ve-text">Color del texto</label>
       <div class="ws-color-row">
         <input id="ws-ve-text" type="color" value="#202122">
+        <input id="ws-ve-text-hex" class="ws-hex" type="text" value="#202122" maxlength="7" spellcheck="false" aria-label="Color de texto hexadecimal">
         <button data-clear="color">Original</button>
       </div>
       <p class="ws-note ws-status" role="status">Los cambios se muestran y se aplican inmediatamente a la selección actual.</p>`;
@@ -156,8 +158,8 @@
         );
       });
     });
-    bindLiveColor('#ws-ve-background', 'backgroundColor');
-    bindLiveColor('#ws-ve-text', 'color');
+    bindLiveColor('#ws-ve-background', '#ws-ve-background-hex', 'backgroundColor');
+    bindLiveColor('#ws-ve-text', '#ws-ve-text-hex', 'color');
     panel.querySelectorAll('[data-clear]').forEach((button) => {
       button.addEventListener('click', () => {
         const property = button.dataset.clear;
@@ -170,18 +172,53 @@
     refreshSelectionStatus();
   }
 
-  function bindLiveColor(selector, property) {
-    const input = panel.querySelector(selector);
-    input.addEventListener('input', () => {
-      const change = { [property]: input.value };
+  function bindLiveColor(pickerSelector, hexSelector, property) {
+    const picker = panel.querySelector(pickerSelector);
+    const hex = panel.querySelector(hexSelector);
+
+    function previewAndSchedule(color) {
+      const change = { [property]: color };
       previewSelection(change);
       clearTimeout(commitTimer);
       commitTimer = setTimeout(() => commitSelection(change), 250);
+    }
+
+    picker.addEventListener('input', () => {
+      hex.value = picker.value.toUpperCase();
+      hex.setAttribute('aria-invalid', 'false');
+      previewAndSchedule(picker.value);
     });
-    input.addEventListener('change', () => {
+    picker.addEventListener('change', () => {
       clearTimeout(commitTimer);
-      commitSelection({ [property]: input.value });
+      commitSelection({ [property]: picker.value });
     });
+    hex.addEventListener('input', () => {
+      const color = normalizeHex(hex.value);
+      hex.setAttribute('aria-invalid', String(!color));
+      if (!color) return;
+      picker.value = color;
+      previewAndSchedule(color);
+    });
+    hex.addEventListener('change', () => {
+      const color = normalizeHex(hex.value);
+      if (!color) return;
+      hex.value = color.toUpperCase();
+      clearTimeout(commitTimer);
+      commitSelection({ [property]: color });
+    });
+    hex.addEventListener('blur', () => {
+      const color = normalizeHex(hex.value);
+      hex.value = (color || picker.value).toUpperCase();
+      hex.setAttribute('aria-invalid', 'false');
+    });
+  }
+
+  function normalizeHex(value) {
+    const hex = value.trim().replace(/^#/, '');
+    if (/^[0-9a-f]{3}$/i.test(hex)) {
+      return `#${[...hex].map((character) => character.repeat(2)).join('')}`.toLowerCase();
+    }
+    return /^[0-9a-f]{6}$/i.test(hex) ? `#${hex.toLowerCase()}` : null;
   }
 
   function refreshSelectionStatus() {
