@@ -38,15 +38,16 @@ continúan guardándose en `style`.
 La alineación vertical ofrece **Arriba**, **Centro** y **Abajo**, y se guarda en
 el wikicódigo mediante `valign="top"`, `valign="middle"` o `valign="bottom"`.
 
-El panel **Bordes, padding y ancho** permite configurar por separado el contorno
-exterior y los bordes interiores de la selección. Cada grupo admite grosores para
+El panel **Contorno, bordes y padding** permite configurar por separado el
+contorno exterior y los bordes interiores de la selección. Cada grupo admite grosores para
 arriba, derecha, abajo e izquierda, vinculados o independientes; estilos sólido,
 discontinuo, punteado, doble o sin borde; y un color común. El padding ofrece los
 cuatro valores en píxeles y se aplica a las celdas seleccionadas.
 
-Al seleccionar una única columna completa se puede asignar un ancho entre 1% y
-100% mediante el atributo de wikicódigo `width="N%"`. Las celdas con `colspan` se
-omiten para no imponerles el ancho de una sola columna.
+El ancho de columna tiene una pantalla independiente. Al seleccionar una única
+columna completa se puede asignar un ancho entre 1% y 100% mediante el atributo de
+wikicódigo `width="N%"`. La extensión recorre el índice lógico exacto de esa
+columna y no modifica las demás; las celdas con `colspan` se omiten.
 
 ## Probar la extensión
 

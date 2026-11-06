@@ -238,7 +238,8 @@
         <button data-clear="color">Original</button>
       </div>
       <button class="ws-stripes-open" disabled>Configurar filas alternas…</button>
-      <button class="ws-layout-open" disabled>Bordes, padding y ancho…</button>
+      <button class="ws-layout-open" disabled>Contorno, bordes y padding…</button>
+      <button class="ws-width-open" disabled>Ancho de columna…</button>
       <p class="ws-note ws-status" role="status">Los cambios se muestran y se aplican inmediatamente a la selección actual.</p>`;
     document.documentElement.append(panel);
     panel.querySelector('.ws-close').addEventListener('click', closePanel);
@@ -274,6 +275,7 @@
     });
     panel.querySelector('.ws-stripes-open').addEventListener('click', showStripeDialog);
     panel.querySelector('.ws-layout-open').addEventListener('click', showLayoutDialog);
+    panel.querySelector('.ws-width-open').addEventListener('click', showWidthDialog);
 
     statusTimer = setInterval(refreshSelectionStatus, 250);
     refreshSelectionStatus();
@@ -493,12 +495,28 @@
     ) {
       return [];
     }
-    return selection.getMatrixCells(documentModel).filter((cell) => cell.node.getColspan() === 1);
+    const matrix = selection.getTableNode(documentModel).getMatrix();
+    const columnIndex = selection.startCol;
+    const cells = [];
+    const nodes = new Set();
+    for (let rowIndex = 0; rowIndex < matrix.getRowCount(); rowIndex += 1) {
+      const cell = matrix.getCell(rowIndex, columnIndex);
+      if (
+        !cell ||
+        cell.isPlaceholder?.() ||
+        cell.node.getColspan() !== 1 ||
+        nodes.has(cell.node)
+      ) {
+        continue;
+      }
+      nodes.add(cell.node);
+      cells.push(cell);
+    }
+    return cells;
   }
 
   function showLayoutDialog() {
     const cells = getSelectedCells();
-    const columnCells = getSelectedColumnCells();
     const status = panel?.querySelector('.ws-status');
     if (!cells.length) {
       if (status) status.textContent = 'Selecciona celdas de una tabla para editar su formato.';
@@ -509,7 +527,7 @@
     const dialog = document.createElement('section');
     dialog.className = 'ws-layout-dialog';
     dialog.setAttribute('role', 'dialog');
-    dialog.setAttribute('aria-label', 'Bordes, padding y ancho');
+    dialog.setAttribute('aria-label', 'Contorno, bordes y padding');
     dialog.innerHTML = `
       <div class="ws-head"><strong>Bordes y espacio</strong><button class="ws-close" aria-label="Cerrar">×</button></div>
       ${borderControls('outer', 'Contorno exterior')}
@@ -518,17 +536,6 @@
         <legend>Padding de las celdas</legend>
         ${sideInputs('padding', 0)}
         <label class="ws-link-sides"><input type="checkbox" data-link="padding" checked> Mismo valor en los cuatro lados</label>
-      </fieldset>
-      <fieldset class="ws-format-group">
-        <legend>Ancho de columna</legend>
-        <div class="ws-width-row">
-          <input class="ws-number" type="number" min="1" max="100" step="0.1" placeholder="10" data-column-width ${columnCells.length ? '' : 'disabled'}>
-          <span>%</span>
-          <button class="ws-column-apply" ${columnCells.length ? '' : 'disabled'}>Aplicar ancho</button>
-        </div>
-        <p class="ws-note">${columnCells.length
-          ? 'Se aplicará a la columna completa; las celdas con colspan se omiten.'
-          : 'Selecciona una única columna completa para establecer su ancho.'}</p>
       </fieldset>
       <div class="ws-actions">
         <button class="ws-layout-cancel">Cancelar</button>
@@ -549,6 +556,38 @@
       applyBordersAndPadding(cells, readBorder(dialog, 'outer'), readBorder(dialog, 'inner'), readSides(dialog, 'padding'));
       close();
     });
+  }
+
+  function showWidthDialog() {
+    const cells = getSelectedColumnCells();
+    const status = panel?.querySelector('.ws-status');
+    if (!cells.length) {
+      if (status) status.textContent = 'Selecciona una única columna completa para establecer su ancho.';
+      return;
+    }
+
+    panel.querySelector('.ws-width-dialog')?.remove();
+    const dialog = document.createElement('section');
+    dialog.className = 'ws-width-dialog';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-label', 'Ancho de columna');
+    dialog.innerHTML = `
+      <div class="ws-head"><strong>Ancho de columna</strong><button class="ws-close" aria-label="Cerrar">×</button></div>
+      <p class="ws-note">El ancho se aplicará únicamente a la columna seleccionada. Las celdas con colspan se omiten.</p>
+      <label for="ws-column-width">Ancho</label>
+      <div class="ws-width-row">
+        <input id="ws-column-width" class="ws-number" type="number" min="1" max="100" step="0.1" placeholder="10" data-column-width>
+        <span>%</span>
+      </div>
+      <div class="ws-actions">
+        <button class="ws-width-cancel">Cancelar</button>
+        <button class="ws-save ws-column-apply">Aplicar ancho</button>
+      </div>`;
+    panel.append(dialog);
+
+    const close = () => dialog.remove();
+    dialog.querySelector('.ws-close').addEventListener('click', close);
+    dialog.querySelector('.ws-width-cancel').addEventListener('click', close);
     dialog.querySelector('.ws-column-apply').addEventListener('click', () => {
       const input = dialog.querySelector('[data-column-width]');
       const width = Number(input.value);
@@ -557,7 +596,8 @@
         return;
       }
       input.setAttribute('aria-invalid', 'false');
-      applyColumnWidth(columnCells, width);
+      applyColumnWidth(cells, width);
+      close();
     });
   }
 
@@ -681,6 +721,7 @@
       : 'Selecciona una celda, fila o columna en la tabla.';
     panel.querySelector('.ws-stripes-open').disabled = !getWholeTableRows();
     panel.querySelector('.ws-layout-open').disabled = !cells.length;
+    panel.querySelector('.ws-width-open').disabled = !getSelectedColumnCells().length;
   }
 
   function viewElementForNode(node) {

@@ -124,7 +124,8 @@
 }
 
 #wikistyle-editor .ws-stripes-open,
-#wikistyle-editor .ws-layout-open {
+#wikistyle-editor .ws-layout-open,
+#wikistyle-editor .ws-width-open {
   width: 100%;
   margin-top: 14px;
   padding: 9px 10px;
@@ -138,7 +139,8 @@
 }
 
 #wikistyle-editor .ws-stripes-open:disabled,
-#wikistyle-editor .ws-layout-open:disabled {
+#wikistyle-editor .ws-layout-open:disabled,
+#wikistyle-editor .ws-width-open:disabled {
   border-color: #c8ccd1;
   color: #72777d;
   cursor: not-allowed;
@@ -156,7 +158,8 @@
   box-shadow: 0 8px 28px rgb(0 0 0 / 22%);
 }
 
-#wikistyle-editor .ws-layout-dialog {
+#wikistyle-editor .ws-layout-dialog,
+#wikistyle-editor .ws-width-dialog {
   position: absolute;
   z-index: 2;
   top: 0;
@@ -169,6 +172,10 @@
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 8px 28px rgb(0 0 0 / 28%);
+}
+
+#wikistyle-editor .ws-width-dialog {
+  width: 320px;
 }
 
 #wikistyle-editor .ws-format-group {
@@ -237,22 +244,6 @@
   width: 95px;
 }
 
-#wikistyle-editor .ws-width-row button {
-  margin-left: auto;
-  padding: 7px 10px;
-  border: 1px solid #6d4aff;
-  border-radius: 6px;
-  color: #5738d6;
-  cursor: pointer;
-  background: #f1edff;
-}
-
-#wikistyle-editor .ws-width-row button:disabled {
-  border-color: #c8ccd1;
-  color: #72777d;
-  cursor: not-allowed;
-  background: #eaecf0;
-}
 
 #wikistyle-editor .ws-stripes-dialog .ws-color-row {
   grid-template-columns: 44px minmax(0, 1fr);
