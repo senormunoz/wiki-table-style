@@ -30,6 +30,11 @@ filas alternas**. Permite elegir dos colores —`#FFFFFF` y `#EFEFEF` por defect
 aplicarlos alternadamente a las filas de datos. Las filas compuestas por celdas de
 encabezado conservan su formato actual.
 
+Los fondos se guardan en el wikicódigo con `bgcolor="#RRGGBB"`. Al cambiar un
+fondo existente, WikiStyle elimina `background-color` de `style` para evitar que
+ambas declaraciones entren en conflicto. La alineación y el color del texto
+continúan guardándose en `style`.
+
 ## Probar la extensión
 
 1. Abre `chrome://extensions` en Chrome.

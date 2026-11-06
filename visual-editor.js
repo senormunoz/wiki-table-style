@@ -18,14 +18,16 @@
   function ensureVisualEditorPatches() {
     const dmClass = window.ve?.dm?.TableCellNode;
     const ceClass = window.ve?.ce?.TableCellNode;
-    if (!dmClass || !ceClass || dmClass.static.__wikiStylePatched) return;
+    const converterClass = window.ve?.dm?.DomFromModelConverter;
+    if (!dmClass || !ceClass || !converterClass || dmClass.static.__wikiStylePatched) return;
 
     const originalToDataElement = dmClass.static.toDataElement;
     dmClass.static.toDataElement = function (domElements, ...args) {
       const dataElement = originalToDataElement.call(this, domElements, ...args);
       const style = domElements[0]?.style;
-      if (style?.backgroundColor) {
-        dataElement.attributes.wikistyleBackgroundColor = style.backgroundColor;
+      const backgroundColor = domElements[0]?.getAttribute('bgcolor') || style?.backgroundColor;
+      if (backgroundColor) {
+        dataElement.attributes.wikistyleBackgroundColor = backgroundToHex(backgroundColor);
       }
       if (style?.color) {
         dataElement.attributes.wikistyleColor = style.color;
@@ -50,15 +52,28 @@
       originalUpdateStyles.call(this, $element, model);
       const backgroundColor = model.getAttribute('wikistyleBackgroundColor');
       const color = model.getAttribute('wikistyleColor');
-      if (backgroundColor !== undefined) setStyle($element[0], 'background-color', backgroundColor);
+      if (backgroundColor !== undefined) setCellBackground($element[0], backgroundColor);
       if (color !== undefined) setStyle($element[0], 'color', color);
     };
 
     const originalAttributeChange = ceClass.prototype.onAttributeChange;
     ceClass.prototype.onAttributeChange = function (key, from, to) {
       originalAttributeChange.call(this, key, from, to);
-      if (key === 'wikistyleBackgroundColor') setStyle(this.$element[0], 'background-color', to);
+      if (key === 'wikistyleBackgroundColor') setCellBackground(this.$element[0], to);
       if (key === 'wikistyleColor') setStyle(this.$element[0], 'color', to);
+    };
+
+    const originalRenderAttributes = converterClass.static.renderHtmlAttributeList;
+    converterClass.static.renderHtmlAttributeList = function (originalElements, targetElements, ...args) {
+      const preparedOriginals = originalElements.map((original, index) => {
+        if (!targetElements[index]?.__wikiStyleBackgroundHandled) return original;
+        const clone = original.cloneNode(true);
+        clone.removeAttribute?.('bgcolor');
+        clone.style?.removeProperty('background-color');
+        if (clone.style && !clone.getAttribute('style')) clone.removeAttribute('style');
+        return clone;
+      });
+      return originalRenderAttributes.call(this, preparedOriginals, targetElements, ...args);
     };
 
     dmClass.static.__wikiStylePatched = true;
@@ -66,11 +81,31 @@
 
   function applyModelStyle(element, attributes) {
     if (Object.hasOwn(attributes, 'wikistyleBackgroundColor')) {
-      setStyle(element, 'background-color', attributes.wikistyleBackgroundColor);
+      setCellBackground(element, attributes.wikistyleBackgroundColor);
     }
     if (Object.hasOwn(attributes, 'wikistyleColor')) {
       setStyle(element, 'color', attributes.wikistyleColor);
     }
+  }
+
+  function setCellBackground(element, value) {
+    element.__wikiStyleBackgroundHandled = true;
+    element.style.removeProperty('background-color');
+    if (!element.getAttribute('style')) element.removeAttribute('style');
+    const hex = backgroundToHex(value);
+    if (hex) element.setAttribute('bgcolor', hex);
+    else element.removeAttribute('bgcolor');
+  }
+
+  function backgroundToHex(value) {
+    if (!value) return null;
+    const normalized = normalizeHex(String(value));
+    if (normalized) return normalized.toUpperCase();
+    const channels = String(value).match(/rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)/i);
+    if (!channels) return null;
+    return `#${channels.slice(1, 4).map((channel) =>
+      Math.min(255, Number(channel)).toString(16).padStart(2, '0')
+    ).join('')}`.toUpperCase();
   }
 
   function getSurface() {

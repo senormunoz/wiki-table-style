@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WikiStyle",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Personaliza la alineación y el color de fondo de elementos de Wikipedia.",
   "permissions": ["storage", "activeTab"],
   "action": {
