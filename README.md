@@ -61,6 +61,9 @@ tabla completa. Es un borrado total de formato: elimina `class`, `style`,
 encabezado y celdas. Conserva contenido y estructura, incluidos `rowspan` y
 `colspan`.
 
+La limpieza se repite después de la restauración interna de atributos de
+VisualEditor y elimina también cualquier atributo vacío `style=""`.
+
 ## Probar la extensión
 
 1. Abre `chrome://extensions` en Chrome.

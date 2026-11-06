@@ -140,7 +140,12 @@
         if (clone.style && !clone.getAttribute('style')) clone.removeAttribute('style');
         return clone;
       });
-      return originalRenderAttributes.call(this, preparedOriginals, targetElements, ...args);
+      const result = originalRenderAttributes.call(this, preparedOriginals, targetElements, ...args);
+      Array.from(targetElements).forEach((target) => {
+        if (target.__wikiStyleNukeStyles) nukeSerializedElement(target);
+        if (target.getAttribute?.('style')?.trim() === '') target.removeAttribute('style');
+      });
+      return result;
     };
 
     dmClass.static.__wikiStylePatched = true;
