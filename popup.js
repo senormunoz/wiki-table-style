@@ -3,7 +3,7 @@ const status = document.querySelector('#status');
 async function send(message) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id || !tab.url?.includes('wikipedia.org/')) {
-    throw new Error('Abre una página de Wikipedia para usar WikiStyle.');
+    throw new Error('Abre una página de Wikipedia para usar Wiki Table Style.');
   }
   return chrome.tabs.sendMessage(tab.id, message);
 }

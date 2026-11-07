@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "WikiStyle",
-  "version": "0.9.7",
+  "name": "Wiki Table Style",
+  "version": "0.9.8",
   "description": "Personaliza la alineación y el color de fondo de elementos de Wikipedia.",
   "permissions": ["storage", "activeTab"],
   "icons": {
@@ -11,7 +11,7 @@
     "128": "icons/icon-128.png"
   },
   "action": {
-    "default_title": "WikiStyle",
+    "default_title": "Wiki Table Style",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png"

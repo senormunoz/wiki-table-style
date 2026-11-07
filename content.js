@@ -179,7 +179,7 @@
     const isTableCell = selected.matches('td, th');
     const panel = document.createElement('section');
     panel.id = 'wikistyle-editor';
-    panel.setAttribute('aria-label', 'Editor de estilo de WikiStyle');
+    panel.setAttribute('aria-label', 'Editor de Wiki Table Style');
     panel.innerHTML = `
       <div class="ws-head"><strong>Editar elemento</strong><button class="ws-close" aria-label="Cerrar">×</button></div>
       ${isTableCell ? `

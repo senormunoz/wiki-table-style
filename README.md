@@ -1,4 +1,4 @@
-# WikiStyle
+# Wiki Table Style
 
 Extensión de Chrome para personalizar visualmente páginas de Wikipedia. Permite
 seleccionar cualquier elemento, cambiar su alineación, color de fondo y color de
@@ -6,14 +6,14 @@ texto, y guardar los ajustes de forma local para cada artículo. En las tablas s
 puede aplicar cada cambio a una celda, una fila o una columna completa, incluyendo
 tablas con celdas combinadas mediante `rowspan` y `colspan`.
 
-Cuando el Editor Visual de Wikipedia está abierto, WikiStyle usa la selección
+Cuando el Editor Visual de Wikipedia está abierto, Wiki Table Style usa la selección
 actual del propio editor. Puedes seleccionar una celda o usar los controles de la
 tabla de Wikipedia para seleccionar una fila, columna o grupo de celdas. Los
 cambios se previsualizan y aplican inmediatamente al modelo de edición, por lo que
 pasan al wikicódigo al revisar y publicar. La extensión nunca pulsa **Publicar
 cambios** automáticamente.
 
-WikiStyle guarda el formato como atributos del nodo de celda de VisualEditor. No
+Wiki Table Style guarda el formato como atributos del nodo de celda de VisualEditor. No
 reemplaza celdas ni inserta estructuras de tabla nuevas, por lo que el contenido y
 la estructura original permanecen intactos.
 
@@ -31,7 +31,7 @@ aplicarlos alternadamente a las filas de datos. Las filas compuestas por celdas 
 encabezado conservan su formato actual.
 
 Los fondos se guardan en el wikicódigo con `bgcolor="#RRGGBB"`. Al cambiar un
-fondo existente, WikiStyle elimina `background-color` de `style` para evitar que
+fondo existente, Wiki Table Style elimina `background-color` de `style` para evitar que
 ambas declaraciones entren en conflicto. La alineación horizontal se guarda con
 `align="left"`, `align="center"` o `align="right"` en las celdas de datos. En los
 encabezados se utiliza `text-align` porque el estilo predeterminado de Wikipedia
@@ -75,11 +75,11 @@ limpia y permanece al guardar sin recuperar atributos antiguos.
 1. Abre `chrome://extensions` en Chrome.
 2. Activa **Modo de desarrollador**.
 3. Pulsa **Cargar descomprimida** y elige esta carpeta.
-4. Abre una página de Wikipedia y pulsa el icono de WikiStyle.
+4. Abre una página de Wikipedia y pulsa el icono de Wiki Table Style.
 5. Pulsa **Editar selección**, elige una parte de la página y edítala.
 
 Para guardar el resultado en Wikipedia, abre primero **Editar** (Editor Visual),
-selecciona una celda, fila o columna y abre WikiStyle. Cambia la alineación o los
+selecciona una celda, fila o columna y abre Wiki Table Style. Cambia la alineación o los
 colores y termina el proceso con la revisión normal de Wikipedia.
 
 Los cambios se guardan con `chrome.storage.local`; no editan Wikipedia ni se

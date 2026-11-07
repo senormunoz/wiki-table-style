@@ -285,7 +285,7 @@
     panel = document.createElement('section');
     panel.id = 'wikistyle-editor';
     panel.innerHTML = `
-      <div class="ws-head"><strong>WikiStyle</strong><button class="ws-close" aria-label="Cerrar">×</button></div>
+      <div class="ws-head"><strong>Wiki Table Style</strong><button class="ws-close" aria-label="Cerrar">×</button></div>
       <p>${message}</p>`;
     document.documentElement.append(panel);
     panel.querySelector('.ws-close').addEventListener('click', closePanel);
@@ -295,7 +295,7 @@
     closePanel();
     panel = document.createElement('section');
     panel.id = 'wikistyle-editor';
-    panel.setAttribute('aria-label', 'WikiStyle para el Editor Visual');
+    panel.setAttribute('aria-label', 'Wiki Table Style para el Editor Visual');
     panel.innerHTML = `
       <div class="ws-head"><strong>Formato de selección</strong><button class="ws-close" aria-label="Cerrar">×</button></div>
       <p class="ws-selection">Selecciona una celda, fila o columna en la tabla.</p>
