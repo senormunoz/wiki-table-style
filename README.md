@@ -26,6 +26,36 @@ Editor Visual y conservar los cambios en el wikicódigo al publicar el artículo
   `rowspan` ni `colspan`.
 - Compatibilidad con las acciones Deshacer y Rehacer de VisualEditor.
 
+## Capturas de pantalla
+
+### Formato de una selección
+
+La pantalla principal permite alinear las celdas seleccionadas y cambiar sus
+colores de fondo y texto con vista previa inmediata.
+
+![Formato de varias celdas seleccionadas en el Editor Visual](docs/screenshots/visual-editor-selection.png)
+
+### Selección de celda, fila o columna
+
+En el modo de personalización también se puede escoger el alcance del cambio y
+combinar alineación horizontal, alineación vertical y colores.
+
+![Formato aplicado a una celda, fila o columna](docs/screenshots/local-formatting.png)
+
+### Ancho de columna
+
+Al seleccionar una columna completa se puede asignar un ancho porcentual sin
+modificar las demás columnas.
+
+![Configuración del ancho porcentual de una columna](docs/screenshots/column-width.png)
+
+### Contorno, bordes y padding
+
+El panel avanzado permite editar por separado el contorno exterior, los bordes
+interiores y el espacio interno de las celdas.
+
+![Configuración del contorno y los bordes de una tabla](docs/screenshots/borders-padding.png)
+
 ## Funcionamiento en el Editor Visual
 
 Cuando el Editor Visual de Wikipedia está abierto, Wiki Table Style usa la selección
