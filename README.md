@@ -33,9 +33,11 @@ encabezado conservan su formato actual.
 Los fondos se guardan en el wikicódigo con `bgcolor="#RRGGBB"`. Al cambiar un
 fondo existente, WikiStyle elimina `background-color` de `style` para evitar que
 ambas declaraciones entren en conflicto. La alineación horizontal se guarda con
-`align="left"`, `align="center"` o `align="right"`. El color del texto se guarda
-en `style`, ya que las celdas de wikicódigo no disponen de un atributo HTML
-equivalente para el color.
+`align="left"`, `align="center"` o `align="right"` en las celdas de datos. En los
+encabezados se utiliza `text-align` porque el estilo predeterminado de Wikipedia
+tiene prioridad sobre el atributo `align`. El color del texto se guarda en
+`style`, ya que las celdas de wikicódigo no disponen de un atributo HTML equivalente
+para el color.
 
 La alineación vertical ofrece **Arriba**, **Centro** y **Abajo**, y se guarda en
 el wikicódigo mediante `valign="top"`, `valign="middle"` o `valign="bottom"`.

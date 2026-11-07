@@ -206,8 +206,11 @@
   function setCellHorizontalAlignment(element, value) {
     element.__wikiStyleAlignHandled = true;
     element.style.removeProperty('text-align');
-    if (value) element.setAttribute('align', value);
-    else element.removeAttribute('align');
+    element.removeAttribute('align');
+    if (value) {
+      if (element.tagName === 'TH') element.style.setProperty('text-align', value);
+      else element.setAttribute('align', value);
+    }
     if (!element.getAttribute('style')) element.removeAttribute('style');
   }
 
