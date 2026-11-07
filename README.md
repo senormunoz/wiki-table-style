@@ -1,14 +1,36 @@
 # Wiki Table Style
 
-Extensión de Chrome para personalizar visualmente páginas de Wikipedia. Permite
-seleccionar cualquier elemento, cambiar su alineación, color de fondo y color de
-texto, y guardar los ajustes de forma local para cada artículo. En las tablas se
-puede aplicar cada cambio a una celda, una fila o una columna completa, incluyendo
-tablas con celdas combinadas mediante `rowspan` y `colspan`.
+Extensión de Chrome para editar el aspecto de las tablas de Wikipedia desde el
+Editor Visual y conservar los cambios en el wikicódigo al publicar el artículo.
+
+## Funciones
+
+- Selección de una celda, una fila, una columna o un grupo de celdas mediante los
+  controles de tabla del Editor Visual.
+- Alineación horizontal a la izquierda, al centro o a la derecha.
+- Alineación vertical arriba, al centro o abajo.
+- Color de fondo y color de texto con selector visual o valor hexadecimal.
+- Vista previa inmediata sobre la tabla mientras se edita.
+- Dos colores alternos por filas para una tabla completa, manteniendo el formato
+  de las filas de encabezado.
+- Contorno exterior y bordes interiores configurables por separado.
+- Grosor independiente para los cuatro lados, o un único valor para todos.
+- Estilos de borde sólido, discontinuo, punteado, doble o sin borde, con un color
+  común para los cuatro lados.
+- Padding superior, derecho, inferior e izquierdo, conjunto o independiente.
+- Ancho porcentual de una columna completa entre `1%` y `100%`.
+- Aplicación independiente de contorno, bordes y padding para evitar escribir
+  valores que no se hayan solicitado.
+- Restablecimiento de bordes y padding en la selección actual.
+- Reseteo total de todos los estilos de una tabla sin borrar su contenido,
+  `rowspan` ni `colspan`.
+- Compatibilidad con las acciones Deshacer y Rehacer de VisualEditor.
+
+## Funcionamiento en el Editor Visual
 
 Cuando el Editor Visual de Wikipedia está abierto, Wiki Table Style usa la selección
 actual del propio editor. Puedes seleccionar una celda o usar los controles de la
-tabla de Wikipedia para seleccionar una fila, columna o grupo de celdas. Los
+tabla de Wikipedia para seleccionar una fila, una columna o un grupo de celdas. Los
 cambios se previsualizan y aplican inmediatamente al modelo de edición, por lo que
 pasan al wikicódigo al revisar y publicar. La extensión nunca pulsa **Publicar
 cambios** automáticamente.
@@ -70,18 +92,19 @@ VisualEditor y elimina también cualquier atributo vacío `style=""`.
 Si se aplica un formato nuevo después del reseteo, se escribe sobre esa base
 limpia y permanece al guardar sin recuperar atributos antiguos.
 
-## Probar la extensión
+## Instalar y probar la extensión
 
 1. Abre `chrome://extensions` en Chrome.
 2. Activa **Modo de desarrollador**.
 3. Pulsa **Cargar descomprimida** y elige esta carpeta.
 4. Abre una página de Wikipedia y pulsa el icono de Wiki Table Style.
-5. Pulsa **Editar selección**, elige una parte de la página y edítala.
+5. Abre **Editar** en Wikipedia para entrar en el Editor Visual.
+6. Selecciona una celda, fila, columna o tabla completa.
+7. Pulsa **Editar selección** en Wiki Table Style y aplica el formato.
+8. Revisa y publica el artículo mediante los controles normales de Wikipedia.
 
-Para guardar el resultado en Wikipedia, abre primero **Editar** (Editor Visual),
-selecciona una celda, fila o columna y abre Wiki Table Style. Cambia la alineación o los
-colores y termina el proceso con la revisión normal de Wikipedia.
-
-Los cambios se guardan con `chrome.storage.local`; no editan Wikipedia ni se
-sincronizan con otros navegadores. **Restablecer esta página** elimina todos los
-ajustes locales del artículo actual.
+Fuera del Editor Visual, el modo de personalización de página guarda sus ajustes
+en `chrome.storage.local`; esos ajustes solo se ven en el navegador actual y
+**Restablecer esta página** los elimina. Dentro del Editor Visual, los cambios de
+tabla se incorporan al modelo de Wikipedia y permanecen en el artículo cuando el
+usuario completa manualmente la publicación.
